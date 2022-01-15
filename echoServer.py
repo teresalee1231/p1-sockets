@@ -6,7 +6,12 @@ s = socket.socket()
 print('Socket Created!')
 
 # binds the socket to the address (ip address, port)? still not sure
-s.bind(('localhost', 9999))
+# for localhost
+# s.bind(('localhost', 9999))
+
+# for attu
+print(socket.gethostname())
+s.bind((socket.gethostname(), 12235))
 
 
 # doesn't need to specify a number, the argument is "backlog" meaning
@@ -21,4 +26,5 @@ c.send(bytes("You've connected to the server!", 'utf-8'))
 
 while True:
     echo = c.recv(1024).decode()
+    print("Client sent: ", echo)
     c.send(bytes(echo, 'utf-8'))
