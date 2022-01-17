@@ -9,4 +9,5 @@ xxx
 
 ### Instructions on how to compile and run your code:
 
-xxx
+Command line:
+python3 client.py

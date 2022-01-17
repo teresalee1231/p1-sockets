@@ -1,4 +1,6 @@
-Both client and server use Python Version 3
+Use Python Version 3.8+
 
-Client code is under part1/
-Server code is under part2/
+(?) Run server before running client?
+
+Client code is under ./part1/
+Server code is under ./part2/
