@@ -16,6 +16,9 @@ PORT = 9999
 # HOST = 'attu2.cs.washington.edu'
 # PORT = 12235
 
+# Student ID
+SID = 160
+
 def old_server():
     """
     Old echoServer code.
@@ -47,8 +50,6 @@ def old_server():
         echo = c.recv(1024).decode()
         print("Client sent: ", echo)
         c.send(bytes(echo, 'utf-8'))
-
-
 
 
 def run_server():

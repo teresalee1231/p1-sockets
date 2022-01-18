@@ -1,8 +1,9 @@
 ### Names
-Ben (netid)
-Teresa (netid)
+Ben (netid)\
+Teresa (netid)\
 Ashley Luty (aluty02)
 
 ### Instructions on how to compile and run your code:
+Enter to command line:
 
-xxx
+python3 server.py
