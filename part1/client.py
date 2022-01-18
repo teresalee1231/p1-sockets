@@ -1,5 +1,6 @@
 # gotta get the socket api
 import socket
+import struct
 # import utility functions; call with utils.helper.get_packet_header()
 import sys
 import os
@@ -7,8 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import utils.helper
 
 # Set host name and port used by server
-HOST = 'localhost'
-PORT = 9999
+SERVER_HOST = 'localhost'
+UDP_PORT = 9999
 # HOST = 'attu2.cs.washington.edu'
 # PORT = 12235
 
@@ -18,31 +19,31 @@ STEP = 1
 # Student ID. TODO: move to utils as global var
 SID = 160
 
-def old_client():
-    """
-    Old echoClient code.
-    """
-    # Creates a socket, c for client
-    c = socket.socket()
-
-    # We connect to an address, in this case the address is (ip address, port)? not sure
-    # for local
-    c.connect((HOST, PORT))
-
-    utils.helper.get_packet_header(0,0,0,0)
-
-    print(c.recv(1024).decode())
-    while True:
-        echo = input("Enter anything and it will be echo'd back from server: ")
-        c.send(bytes(echo, 'utf-8'))
-        print(c.recv(1024).decode())
-
-def stage_a():
+def stage_a(c):
     """
     Returns tuple containing (num, len, udp_port, secretA) from step a2.
+    Args: udp socket to send data over
     Sends "hello world" UDP packet to attu2.cs.washington.edu on port 12235.
     Processes server UDP response.
     """
+    print("stage a")
+
+    # create packet to send
+    c_struct = struct.Struct('> L L H H 12s')
+    payload_len = 12
+    psecret = 0
+    payload = "hello world\0"
+    c_data = [payload_len, psecret, STEP, SID, payload.encode('utf-8')]
+    c_packet = c_struct.pack(*c_data)
+
+    print(f'Sending: {str(c_packet)}')
+    c.sendto(c_packet, (SERVER_HOST, UDP_PORT))
+
+    # receive server packet
+    s_struct = struct.Struct('> L L L L')
+    s_packet, s_addr = c.recvfrom(1024)
+    num, len, udp_port, secretA = s_struct.unpack(s_packet)
+    print(f'Received: {num} {len} {udp_port} {secretA}')
 
 def stage_b(num, len, udp_port, secretA):
     """
@@ -73,10 +74,18 @@ def run_client():
     """
     Runs the client and its stages.
     """
+    # Create client UDP socket. TODO: do we need to support ipv6
+    print("created client")
+    c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    # Run stages
     num, len, udp_port, secretA = stage_a
     tcp_port, secretB = stage_b(num, len, udp_port, secretA)
     num2, len2, secretC, c = stage_c(tcp_port, secretB)
     secretD = stage_d(num2, len2, secretC, c)
+
+    # Close shop
+    c.close()
 
 if __name__ == '__main__':
     run_client()
