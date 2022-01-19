@@ -1,6 +1,6 @@
 ### Names
-Ben (benjee19)\
-Teresa (netid)\
+Ben Jee (benjee19)\
+Teresa Lee (netid)\
 Ashley Luty (aluty02)
 
 ### Instructions on how to compile and run your code:
