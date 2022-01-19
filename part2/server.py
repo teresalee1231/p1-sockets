@@ -5,6 +5,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
+import random
 
 # Set max number of clients that can be served
 MAX_CONNECTIONS = 10
@@ -18,6 +19,39 @@ PORT = 9999
 
 # Student ID
 SID = 160
+
+
+def stage_a(resp):
+    # recieve client packet
+    # verifying ????
+    payload_len = resp[payload_len]
+    p_secret = resp[p_secret]
+    payload = resp[payload]
+
+    # using random
+    num = random.randint(5) #(????)
+    len = random.randint(5)
+    udp_port = random.randint(5)
+    secretA = random.randint(5)
+
+    # send a response
+
+    ## do the server sending stuff lol
+
+    #stage a
+
+
+def stage_b():
+    # transmit nump UDP packets on port udp_port (from stage a)
+
+
+#     #stage b
+
+# def stage_c():
+#     #stage c
+
+# def stage_d():
+#     #stage d
 
 def old_server():
     """
@@ -52,6 +86,8 @@ def old_server():
         c.send(bytes(echo, 'utf-8'))
 
 
+
+
 def run_server():
     """
     Runs the server.
@@ -60,3 +96,6 @@ def run_server():
 
 if __name__ == '__main__':
     run_server()
+
+
+
