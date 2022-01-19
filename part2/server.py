@@ -58,7 +58,9 @@ def old_server():
     Old echoServer code.
     """
     # Creates a socket, s for server
-    s = socket.socket()
+    # AF_INET is just what we use,
+    # SOCK_DGRAM = UDP, SOCK_STREAM = TCP
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print('Socket Created!')
 
     # binds the socket to the address (ip address, port)? still not sure
@@ -66,6 +68,10 @@ def old_server():
     s.bind(('localhost', 9999))
 
     # for attu. is gethostname necessary?
+    # https://docs.python.org/2/howto/sockets.html
+    # Might need to keep it as gethostname(), tried doing specific didnt work,
+    # In here it explains also why we should use gethostname()
+    
     # print(socket.gethostname())
     # s.bind((socket.gethostname(), 12235))
 
