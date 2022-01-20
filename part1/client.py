@@ -2,9 +2,12 @@
 import socket
 import struct
 import math
+import datetime
 # import utility functions; call with utils.helper.get_packet_header()
 import sys
 import os
+
+from blinker import receiver_connected
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
 
@@ -13,12 +16,11 @@ SERVER_HOST = 'localhost'
 # SERVER_HOST = 'attu2.cs.washington.edu'
 
 # Globals
-HEADER = '> L L H H'
-
-# Client step number is always 1.
-STEP = 1
-# Student ID.
-SID = 160
+BUF_SIZE = 1024      # size of data buffer
+HEADER = '> L L H H' # packet header struct
+STEP = 1             # client header step number; always 1
+SID = 160            # header student id
+TIMEOUT = 2.0         # client retransmit interval (seconds); >=0.5
 
 def stage_a(c):
     """
@@ -42,7 +44,7 @@ def stage_a(c):
 
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L L L L')
-    s_packet, s_addr = c.recvfrom(1024)
+    s_packet, s_addr = c.recvfrom(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, num, len, udp_port, secretA = s_struct.unpack(s_packet)
     print(f'Received: {num} {len} {udp_port} {secretA}')
     return (num, len, udp_port, secretA)
@@ -56,23 +58,56 @@ def stage_b(c, num, len, udp_port, secretA):
     Processes server b2 packet.
     """
     print("stage b")
+
+    # set client timeout to retransmission interval
+    c.settimeout(TIMEOUT)
+
     # create client packet struct, with byte-aligned payload
     aligned_len = math.ceil(len/4) * 4
     c_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
-    # create 0s char list
-    zeros = [0] * aligned_len
+    zeros = [0] * aligned_len # create 0s list
+    c_payload_len = 4 + len
 
+    # for each packet
     for i in range(num):
+        print(f'Transmit udp packet {i}.')
         # create packet to send
-        c_payload_len = 4 + len
         c_data = [c_payload_len, secretA, STEP, SID, i] + zeros
-        print(c_data)
         c_packet = c_struct.pack(*c_data)
 
-        print(f'Sending: {c_packet}')
-        c.sendto(c_packet, (SERVER_HOST, udp_port))
+        # packet transmission loop, waits for server ack
+        s_ack_struct = struct.Struct(f'{HEADER} L')
+        acked = False
+        while not acked:
+            # send packet
+            print(f'\tSending: {c_packet}')
+            print(f'\tTime: {datetime.datetime.now().time()}')
+            c.sendto(c_packet, (SERVER_HOST, udp_port))
 
-        # TODO process server response
+            # check for ack
+            try:
+                # receive server ack packet
+                s_packet, s_addr = c.recvfrom(BUF_SIZE)
+                s_plen, s_psecret, s_step, s_sid, acked_packet_id = s_ack_struct.unpack(s_packet)
+                print(f'\tReceived ack for packet {acked_packet_id}: {s_packet}')
+                print(f'\tTime: {datetime.datetime.now().time()}')
+                acked = (i == acked_packet_id)
+            except socket.timeout:
+                print(f'Timeout for packet {i}, retransmit.')
+                print(f'\tTime: {datetime.datetime.now().time()}')
+                acked = False
+        # move on to next packet (next loop)
+
+    # all packets sent and acked, so process final server packet
+    # unset client timeout
+    c.settimeout(None)
+
+    # receive server response
+    s_struct = struct.Struct(f'{HEADER} L L')
+    s_packet, s_addr = c.recvfrom(BUF_SIZE)
+    s_plen, s_psecret, s_step, s_sid, tcp_port, secretB = s_struct.unpack(s_packet)
+    print(f'Received: {tcp_port} {secretB}')
+    return (tcp_port, secretB)
 
 def stage_c(tcp_port, secretB):
     """
