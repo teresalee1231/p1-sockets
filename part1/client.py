@@ -12,8 +12,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import utils.helper
 
 # Set host name and port used by server
+
+# to test locally
 SERVER_HOST = 'localhost'
+STAGE_A_PORT = 9999
+
+# to test against hw server
 # SERVER_HOST = 'attu2.cs.washington.edu'
+# STAGE_A_PORT = 12235
 
 # Globals
 BUF_SIZE = 1024      # size of data buffer
@@ -40,7 +46,7 @@ def stage_a(c):
     c_packet = c_struct.pack(*c_data)
 
     print(f'Sending: {str(c_packet)}')
-    c.sendto(c_packet, (SERVER_HOST, 9999))
+    c.sendto(c_packet, (SERVER_HOST, STAGE_A_PORT))
 
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L L L L')
@@ -116,6 +122,7 @@ def stage_c(tcp_port, secretB):
     Opens TCP connection to server on port tcp_port.
     Processes server c2 packet.
     """
+    print("stage c")
 
 def stage_d(num2, len2, secretC, c):
     """
@@ -134,10 +141,10 @@ def run_client():
     c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Run stages
-    # num, len, udp_port, secretA = stage_a(c)
+    num, len, udp_port, secretA = stage_a(c)
 
     # temp:
-    num, len, udp_port, secretA = (5, 1, 5555, 1212)
+    # num, len, udp_port, secretA = (5, 1, 5555, 1212)
 
     tcp_port, secretB = stage_b(c, num, len, udp_port, secretA)
     num2, len2, secretC, c = stage_c(tcp_port, secretB)
