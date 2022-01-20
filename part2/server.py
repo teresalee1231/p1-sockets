@@ -23,27 +23,48 @@ SID = 160
 
 
 def s_stage_a(resp):
-    # recieve client packet
-    # verifying ????
-    payload_len = resp[payload_len]
-    p_secret = resp[p_secret]
-    payload = resp[payload]
+    ## old server code
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print('Socket Created!')
+    s.bind(('localhost', 9999))
 
-    # using random
-    num = random.randint(5) #(????)
-    len = random.randint(5)
-    udp_port = random.randint(5)
-    secretA = random.randint(5)
+    s.listen(MAX_CONNECTIONS)
+    print('waiting for connections')
 
-    # send a response
 
-    ## do the server sending stuff lol
+    c, addr = s.accept()
+    print("Connected with ", addr)
+    c.send(bytes("You've connected to the server!", 'utf-8'))
 
+    while True:
+        echo = c.recv(1024).decode()
+        print("Client sent: ", echo)
+        c.send(bytes(echo, 'utf-8'))
+
+    # validating the client response
+    # idk if resp[payload_len] works lol
+
+
+
+    # generating random num
+    num = random.randomint(9999)
+    len = random.randomint(9999)
+    udp_port = random.randomint(9999)
+    secretA = random.randomint(9999)
+
+    # ^ send that, move stuff later
     #stage a
+    # return (udp_port)
 
 
 def s_stage_b(num, len, udp_port):
     # transmit nump UDP packets on port udp_port (from stage a)
+    # bind socket to udp_port
+    # s.bind(host, udp_port)
+
+    packet_id =
+    # randomly puts ack
+
 
 
 #     #stage b
