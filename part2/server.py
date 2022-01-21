@@ -56,27 +56,23 @@ def s_stage_a(c):
 
 
               #temp s variable
-def s_stage_b(s,num, len, udp_port):
+def s_stage_b(c,num, len, udp_port):
     # transmit nump UDP packets on port udp_port (from stage a)
-    packet_id = 0;
-    acked = FALSE
+
+    # want to verify the recieved data
+    aligned_len = math.ceil(len/4) * 4
+    s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
+    s_data = c.recv(1024)
+
+    # do the verifying
+    # if not valid
+    # close
+
+    packet_id = 0
     while packet_id != num :
-        # payload
-
-        # Each of these ‘data’ packets has length len+4
-        data = len + 4
-        # first 4 bytes is identifying integer = packet_id?
-
-        #The rest of the payload bytes in the packet (len of them) is 0s.
-
-        ack = random.randomint(1)
+        ack = random.randint(1)
         if ack == 1 :
-            acked = TRUE
-            # make the data acked
-        # else :
-            #loop?
 
-        # pack
 
     secretB = "temp"
     tcp_port = "temp"
