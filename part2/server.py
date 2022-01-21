@@ -1,12 +1,15 @@
 # gotta get the socket api
+from pickle import FALSE, TRUE
 import socket
 # import utility functions; call with utils.get_packet_header()
 import sys
 import os
+import math
 from part1.client import stage_c
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
 import random
+import struct
 
 # Set max number of clients that can be served
 MAX_CONNECTIONS = 10
@@ -20,39 +23,122 @@ PORT = 9999
 
 # Student ID
 SID = 160
+HEADER = '> L L H H' # packet header struct
 
 
-def s_stage_a(resp):
-    # recieve client packet
-    # verifying ????
-    payload_len = resp[payload_len]
-    p_secret = resp[p_secret]
-    payload = resp[payload]
+def s_stage_a(c):
+    s_struct = struct.Struct(f'{HEADER} 12s')
+    sent_data = c.recv(1024)
 
-    # using random
-    num = random.randint(5) #(????)
-    len = random.randint(5)
-    udp_port = random.randint(5)
-    secretA = random.randint(5)
+    payload_len, psecret, step, studentNum, payload = s_struct.unpack(sent_data)
 
-    # send a response
+    # verify payload
+    # if payload != hello world
+    # close_connection()
 
-    ## do the server sending stuff lol
+    # generating random num
+    num = random.randint(9999)
+    len = random.randint(9999)
+    udp_port = random.randint(9999)
+    secretA = random.randint(9999)
+
+    s_payload_len = 16
+    #s_psecret =
+    s_step = 0
+
+    s_data = [s_payload_len, psecret, s_step, SID, num, len, udp_port, secretA]
+    s_our_struct = struct.Struct(f'{HEADER} L L L L')
+    s_packet = s_our_struct.pack(*s_data)
+    #sending
+    c.sendto(s_packet, (HOST, PORT))
 
     #stage a
+    return (num, len, udp_port, secretA)
 
 
-def s_stage_b(num, len, udp_port):
+              #temp s variable
+def s_stage_b(c,num, len, udp_port, secretA):
     # transmit nump UDP packets on port udp_port (from stage a)
+
+    # want to verify the recieved data
+    aligned_len = math.ceil(len/4) * 4
+    s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
+    s_data = c.recv(1024)
+
+    # do the verifying
+    # if not valid
+    # close
+
+    packet_id = 0
+    while packet_id != num :
+        ack = random.randint(1)
+        if ack == 1 :
+
+
+    secretB = "temp"
+    tcp_port = "temp"
+    #do the sending
+
 
 
 #     #stage b
 
-# def s_stage_c(tcp_port):
+def s_stage_c(tcp_port, secretB):
 #     #stage c
 
-# def s_stage_d(num2, len2, char_c):
+    tcp_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_s.bind(('localhost', tcp_port))
+    tcp_s.listen(MAX_CONNECTIONS)
+    print('waiting for connections')
+
+    tcp_c, addr = tcp_s.accept()
+    print("Connected with ", addr)
+    tcp_c.send(bytes("You've connected to the server!", 'utf-8'))
+
+
+    # Payload
+    num2 = random.randint(500)
+    len2 = random.randint(500)
+    secretC = random.randint(500)
+    char_c = 'a'
+
+    # Header
+    payload_len = 13
+    psecret = secretB #whatever came in from the header
+    step = 2
+
+    aligned_len = math.ceil(payload_len/4) * 4
+    zeros = [0] * (aligned_len - payload_len)
+    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c] + zeros
+    s_struct = struct.Struct(f'{HEADER} L L L 1s 3B')
+    s_packet = s_struct.pack(*s_data)
+    
+    tcp_c.send(s_packet)
+
+    return (num2, len2, char_c, tcp_c, secretC)
+
+
+def s_stage_d(num2, len2, char_c, tcp_c, secretC):
 #     #stage d
+
+    # Payload
+    secretD = random.randint(500)
+
+    # Header
+    payload_len = 4
+    psecret = secretC #whatever came in from the client header
+    step = 3
+
+    s_data = [payload_len, psecret, step, SID, secretD]
+    s_struct = struct.Struct(f'{HEADER} L')
+    s_packet = s_struct.pack(*s_data)
+    tcp_c.send(s_packet)
+
+
+def detectedFailure(client_socket):
+    client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
+    client_socket.close()
+
 
 def old_server():
     """
@@ -129,10 +215,10 @@ def run_server():
 
     # Run Stages
 
-    num, len, udp_port = s_stage_a(c)
-    tcp_port = s_stage_b(num, len, udp_port)
-    num2, len2, char_c= s_stage_c(tcp_port)
-    s_stage_d(num2, len2)
+    num, len, udp_port, secretA = s_stage_a(c)
+    tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+    num2, len2, char_c, tcp_c, secretC = s_stage_c(tcp_port, secretB)
+    s_stage_d(num2, len2, char_c, tcp_c, secretC)
 
 
 if __name__ == '__main__':
