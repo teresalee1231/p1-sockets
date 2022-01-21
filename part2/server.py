@@ -82,11 +82,55 @@ def s_stage_b(c,num, len, udp_port):
 
 #     #stage b
 
-# def s_stage_c(tcp_port):
+def s_stage_c(tcp_port):
 #     #stage c
 
-# def s_stage_d(num2, len2, char_c):
+    tcp_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_s.bind(('localhost', tcp_port))
+    tcp_s.listen(MAX_CONNECTIONS)
+    print('waiting for connections')
+
+    tcp_c, addr = tcp_s.accept()
+    print("Connected with ", addr)
+    tcp_c.send(bytes("You've connected to the server!", 'utf-8'))
+
+
+    # Payload
+    num2 = 15
+    len2 = 10
+    secretC = 1500
+    char_c = 'a'
+
+    # Header
+    payload_len = 13
+    psecret = 1500
+    step = 3
+
+    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c]
+    s_struct = struct.Struct(f'{HEADER} L L L 1s')
+    s_packet = s_struct.pack(*s_data)
+    
+    tcp_c.send(s_packet)
+
+    return (num2, len2, char_c, tcp_c)
+
+
+def s_stage_d(num2, len2, char_c, tcp_c):
 #     #stage d
+
+    # Payload
+    secretD = 1500
+
+    # Header
+    payload_len = 4
+    psecret = 1500
+    step = 4
+
+    s_data = [payload_len, psecret, step, SID, secretD]
+    s_struct = struct.Struct(f'{HEADER} L')
+    s_packet = s_struct.pack(*s_data)
+    tcp_c.send(s_packet)
+
 
 def old_server():
     """
@@ -165,8 +209,8 @@ def run_server():
 
     num, len, udp_port = s_stage_a(c)
     tcp_port = s_stage_b(num, len, udp_port)
-    num2, len2, char_c= s_stage_c(tcp_port)
-    s_stage_d(num2, len2)
+    num2, len2, char_c, tcp_c= s_stage_c(tcp_port)
+    s_stage_d(num2, len2, char_c, tcp_c)
 
 
 if __name__ == '__main__':
