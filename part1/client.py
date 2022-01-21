@@ -6,20 +6,17 @@ import datetime
 # import utility functions; call with utils.helper.get_packet_header()
 import sys
 import os
-
-from blinker import receiver_connected
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
 
 # Set host name and port used by server
-
 # to test locally
-SERVER_HOST = 'localhost'
-STAGE_A_PORT = 9999
+#SERVER_HOST = 'localhost'
+#STAGE_A_PORT = 9999
 
 # to test against hw server
-# SERVER_HOST = 'attu2.cs.washington.edu'
-# STAGE_A_PORT = 12235
+SERVER_HOST = 'attu2.cs.washington.edu'
+STAGE_A_PORT = 12235
 
 # Globals
 BUF_SIZE = 1024      # size of data buffer
@@ -86,8 +83,8 @@ def stage_b(c, num, len, udp_port, secretA):
         acked = False
         while not acked:
             # send packet
-            print(f'\tSending: {c_packet}')
-            print(f'\tTime: {datetime.datetime.now().time()}')
+            print(f'\tSending: {c_packet.hex()}')
+            # print(f'\tTime: {datetime.datetime.now().time()}')
             c.sendto(c_packet, (SERVER_HOST, udp_port))
 
             # check for ack
@@ -96,11 +93,11 @@ def stage_b(c, num, len, udp_port, secretA):
                 s_packet, s_addr = c.recvfrom(BUF_SIZE)
                 s_plen, s_psecret, s_step, s_sid, acked_packet_id = s_ack_struct.unpack(s_packet)
                 print(f'\tReceived ack for packet {acked_packet_id}: {s_packet}')
-                print(f'\tTime: {datetime.datetime.now().time()}')
+                # print(f'\tTime: {datetime.datetime.now().time()}')
                 acked = (i == acked_packet_id)
             except socket.timeout:
                 print(f'Timeout for packet {i}, retransmit.')
-                print(f'\tTime: {datetime.datetime.now().time()}')
+                # print(f'\tTime: {datetime.datetime.now().time()}')
                 acked = False
         # move on to next packet (next loop)
 
