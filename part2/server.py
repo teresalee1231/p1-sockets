@@ -35,10 +35,10 @@ def s_stage_a(c):
     # close_connection()
 
     # generating random num
-    num = random.randomint(9999)
-    len = random.randomint(9999)
-    udp_port = random.randomint(9999)
-    s_psecret = random.randomint(9999)
+    num = random.randint(9999)
+    len = random.randint(9999)
+    udp_port = random.randint(9999)
+    s_psecret = random.randint(9999)
 
     s_payload_len = 16
     #s_psecret =
@@ -54,13 +54,18 @@ def s_stage_a(c):
     return (num, len, udp_port)
 
 
-def s_stage_b(num, len, udp_port):
+              #temp c variable
+def s_stage_b(c,num, len, udp_port):
     # transmit nump UDP packets on port udp_port (from stage a)
-    # bind socket to udp_port
-    # s.bind(host, udp_port)
+    packet_id = 0;
+    while(packet_id != num) :
+        # payload
 
+        # Each of these ‘data’ packets has length len+4
+        # (remember that each packet’s entire payload must be byte-aligned to a 4-byte boundary).
+        data = len + 4
 
-    # randomly puts ack
+        ack = random.randomint(1)
 
 
 
