@@ -4,6 +4,7 @@ import socket
 # import utility functions; call with utils.get_packet_header()
 import sys
 import os
+import math
 from part1.client import stage_c
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
@@ -39,24 +40,24 @@ def s_stage_a(c):
     num = random.randint(9999)
     len = random.randint(9999)
     udp_port = random.randint(9999)
-    s_psecret = random.randint(9999)
+    secretA = random.randint(9999)
 
     s_payload_len = 16
     #s_psecret =
     s_step = 0
 
-    s_data = [s_payload_len, psecret, s_step, SID, num, len, udp_port, s_psecret]
+    s_data = [s_payload_len, psecret, s_step, SID, num, len, udp_port, secretA]
     s_our_struct = struct.Struct(f'{HEADER} L L L L')
     s_packet = s_our_struct.pack(*s_data)
     #sending
     c.sendto(s_packet, (HOST, PORT))
 
     #stage a
-    return (num, len, udp_port)
+    return (num, len, udp_port, secretA)
 
 
               #temp s variable
-def s_stage_b(c,num, len, udp_port):
+def s_stage_b(c,num, len, udp_port, secretA):
     # transmit nump UDP packets on port udp_port (from stage a)
 
     # want to verify the recieved data
@@ -82,7 +83,7 @@ def s_stage_b(c,num, len, udp_port):
 
 #     #stage b
 
-def s_stage_c(tcp_port):
+def s_stage_c(tcp_port, secretB):
 #     #stage c
 
     tcp_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -96,40 +97,47 @@ def s_stage_c(tcp_port):
 
 
     # Payload
-    num2 = 15
-    len2 = 10
-    secretC = 1500
+    num2 = random.randint(500)
+    len2 = random.randint(500)
+    secretC = random.randint(500)
     char_c = 'a'
 
     # Header
     payload_len = 13
-    psecret = 1500
-    step = 3
+    psecret = secretB #whatever came in from the header
+    step = 2
 
-    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c]
-    s_struct = struct.Struct(f'{HEADER} L L L 1s')
+    aligned_len = math.ceil(payload_len/4) * 4
+    zeros = [0] * (aligned_len - payload_len)
+    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c] + zeros
+    s_struct = struct.Struct(f'{HEADER} L L L 1s 3B')
     s_packet = s_struct.pack(*s_data)
     
     tcp_c.send(s_packet)
 
-    return (num2, len2, char_c, tcp_c)
+    return (num2, len2, char_c, tcp_c, secretC)
 
 
-def s_stage_d(num2, len2, char_c, tcp_c):
+def s_stage_d(num2, len2, char_c, tcp_c, secretC):
 #     #stage d
 
     # Payload
-    secretD = 1500
+    secretD = random.randint(500)
 
     # Header
     payload_len = 4
-    psecret = 1500
-    step = 4
+    psecret = secretC #whatever came in from the client header
+    step = 3
 
     s_data = [payload_len, psecret, step, SID, secretD]
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = s_struct.pack(*s_data)
     tcp_c.send(s_packet)
+
+
+def detectedFailure(client_socket):
+    client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
+    client_socket.close()
 
 
 def old_server():
@@ -207,10 +215,10 @@ def run_server():
 
     # Run Stages
 
-    num, len, udp_port = s_stage_a(c)
-    tcp_port = s_stage_b(num, len, udp_port)
-    num2, len2, char_c, tcp_c= s_stage_c(tcp_port)
-    s_stage_d(num2, len2, char_c, tcp_c)
+    num, len, udp_port, secretA = s_stage_a(c)
+    tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+    num2, len2, char_c, tcp_c, secretC = s_stage_c(tcp_port, secretB)
+    s_stage_d(num2, len2, char_c, tcp_c, secretC)
 
 
 if __name__ == '__main__':
