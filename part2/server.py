@@ -7,6 +7,7 @@ from part1.client import stage_c
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import utils.helper
 import random
+import struct
 
 # Set max number of clients that can be served
 MAX_CONNECTIONS = 10
@@ -20,41 +21,37 @@ PORT = 9999
 
 # Student ID
 SID = 160
+HEADER = '> L L H H' # packet header struct
 
 
-def s_stage_a(resp):
-    ## old server code
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    print('Socket Created!')
-    s.bind(('localhost', 9999))
+def s_stage_a(c):
+    s_struct = struct.Struct(f'{HEADER} 12s')
+    sent_data = c.recv(1024)
 
-    s.listen(MAX_CONNECTIONS)
-    print('waiting for connections')
+    payload_len, psecret, step, studentNum, payload = s_struct.unpack(sent_data)
 
-
-    c, addr = s.accept()
-    print("Connected with ", addr)
-    c.send(bytes("You've connected to the server!", 'utf-8'))
-
-    while True:
-        echo = c.recv(1024).decode()
-        print("Client sent: ", echo)
-        c.send(bytes(echo, 'utf-8'))
-
-    # validating the client response
-    # idk if resp[payload_len] works lol
-
-
+    # verify payload
+    # if payload != hello world
+    # close_connection()
 
     # generating random num
     num = random.randomint(9999)
     len = random.randomint(9999)
     udp_port = random.randomint(9999)
-    secretA = random.randomint(9999)
+    s_psecret = random.randomint(9999)
 
-    # ^ send that, move stuff later
+    s_payload_len = 16
+    #s_psecret =
+    s_step = 0
+
+    s_data = [s_payload_len, psecret, s_step, SID, num, len, udp_port, s_psecret]
+    s_our_struct = struct.Struct(f'{HEADER} L L L L')
+    s_packet = s_our_struct.pack(*s_data)
+    #sending
+    c.sendto(s_packet, (HOST, PORT))
+
     #stage a
-    # return (udp_port)
+    return (num, len, udp_port)
 
 
 def s_stage_b(num, len, udp_port):
@@ -62,7 +59,7 @@ def s_stage_b(num, len, udp_port):
     # bind socket to udp_port
     # s.bind(host, udp_port)
 
-    packet_id =
+
     # randomly puts ack
 
 
