@@ -1,4 +1,5 @@
 # gotta get the socket api
+from pickle import FALSE, TRUE
 import socket
 # import utility functions; call with utils.get_packet_header()
 import sys
@@ -54,18 +55,32 @@ def s_stage_a(c):
     return (num, len, udp_port)
 
 
-              #temp c variable
-def s_stage_b(c,num, len, udp_port):
+              #temp s variable
+def s_stage_b(s,num, len, udp_port):
     # transmit nump UDP packets on port udp_port (from stage a)
     packet_id = 0;
-    while(packet_id != num) :
+    acked = FALSE
+    while packet_id != num :
         # payload
 
         # Each of these ‘data’ packets has length len+4
-        # (remember that each packet’s entire payload must be byte-aligned to a 4-byte boundary).
         data = len + 4
+        # first 4 bytes is identifying integer = packet_id?
+
+        #The rest of the payload bytes in the packet (len of them) is 0s.
 
         ack = random.randomint(1)
+        if ack == 1 :
+            acked = TRUE
+            # make the data acked
+        # else :
+            #loop?
+
+        # pack
+
+    secretB = "temp"
+    tcp_port = "temp"
+    #do the sending
 
 
 
