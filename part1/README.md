@@ -1,11 +1,15 @@
 ### Names
 Ben Jee (benjee19)\
-Teresa Lee (netid)\
+Teresa Lee (teresl4)\
 Ashley Luty (aluty02)
 
 ### The sequence of server secrets that were received by your client program:
 
-xxx
+Received from provided server:\
+secretA: 47 \
+secretB: 32 \
+secretC: 1  \
+secretD: 1
 
 ### Instructions on how to compile and run your code:
 Make sure server code is running first.

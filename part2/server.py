@@ -2,14 +2,13 @@
 from pickle import FALSE, TRUE
 import socket
 # import utility functions; call with utils.get_packet_header()
-import sys
-import os
-import math
-from part1.client import stage_c
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import utils.helper
+#import sys
+#import os
+#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+#import utils.helper
 import random
 import struct
+import math
 
 # Set max number of clients that can be served
 MAX_CONNECTIONS = 10
@@ -26,9 +25,9 @@ SID = 160
 HEADER = '> L L H H' # packet header struct
 
 
-def s_stage_a(c):
+def s_stage_a(s):
     s_struct = struct.Struct(f'{HEADER} 12s')
-    sent_data = c.recv(1024)
+    sent_data, c_addr = s.recvfrom(1024)
 
     payload_len, psecret, step, studentNum, payload = s_struct.unpack(sent_data)
 
@@ -39,8 +38,13 @@ def s_stage_a(c):
     # generating random num
     num = random.randint(1,500)
     len = random.randint(1,500)
+<<<<<<< HEAD
     udp_port = random.randint(1,1000) + 1024
     secretA = random.randint(1, 500)
+=======
+    udp_port = random.randint(1,500)
+    secretA = random.randint(1,500)
+>>>>>>> ed0d694d1f7e905deb827f6435fe674fa0625fe7
 
     s_payload_len = 16
     s_step = 0
@@ -49,12 +53,13 @@ def s_stage_a(c):
     s_our_struct = struct.Struct(f'{HEADER} L L L L')
     s_packet = s_our_struct.pack(*s_data)
     #sending
-    c.sendto(s_packet, (HOST, PORT))
+    s.sendto(s_packet, c_addr)
 
     #stage a
     return (num, len, udp_port, secretA)
 
 
+<<<<<<< HEAD
 def s_stage_b(c,num, len, udp_port, secretA):
     # stage b
 
@@ -90,6 +95,34 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_packet = s_send_struct.pack(*s_data)
     c.sendto(s_packet, (HOST, PORT))
     return(tcp_port, secretB)
+=======
+              #temp s variable
+# def s_stage_b(c,num, len, udp_port, secretA):
+#     # transmit nump UDP packets on port udp_port (from stage a)
+
+#     # want to verify the recieved data
+#     aligned_len = math.ceil(len/4) * 4
+#     s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
+#     s_data = c.recv(1024)
+
+#     # do the verifying
+#     # if not valid
+#     # close
+
+#     packet_id = 0
+#     while packet_id != num :
+#         ack = random.randint(1)
+#         if ack == 1 :
+
+
+    #secretB = "temp"
+    #tcp_port = "temp"
+    #do the sending
+
+
+
+#     #stage b
+>>>>>>> ed0d694d1f7e905deb827f6435fe674fa0625fe7
 
 def s_stage_c(tcp_port, secretB):
 #     #stage c
@@ -144,6 +177,7 @@ def s_stage_d(num2, len2, char_c, tcp_c, secretC):
 
 
 def detectedFailure(client_socket):
+    # need to close thread, not just the socket
     client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
     client_socket.close()
 
@@ -212,26 +246,29 @@ def run_server():
     # doesn't need to specify a number, the argument is "backlog" meaning
     # the number of unaccepted connections that the system will
     # allow before refusing new connections, basically how many can be connected?
-    s.listen(MAX_CONNECTIONS)
-    print('waiting for connections')
 
-    c, addr = s.accept()
-    print("Connected with ", addr)
-    c.send(bytes("You've connected to the server!", 'utf-8'))
+
+    # udp, just opens a socket and receives, doesn't need listen, or accept
+    #s.listen(MAX_CONNECTIONS)
+    #print('waiting for connections')
+
+    #c, addr = s.accept()
+    #print("Connected with ", addr)
+    #c.send(bytes("You've connected to the server!", 'utf-8'))
 
 
 
     # Run Stages
 
-    num, len, udp_port, secretA = s_stage_a(c)
+    num, len, udp_port, secretA = s_stage_a(s)
     tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
     num2, len2, char_c, tcp_c, secretC = s_stage_c(tcp_port, secretB)
     s_stage_d(num2, len2, char_c, tcp_c, secretC)
 
 
 if __name__ == '__main__':
-    old_server()
-    #run_server()
+    #old_server()
+    run_server()
 
 
 
