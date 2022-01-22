@@ -23,47 +23,47 @@ BUF_SIZE = 1024      # size of data buffer
 HEADER = '> L L H H' # packet header struct
 STEP = 1             # client header step number; always 1
 SID = 160            # header student id
-TIMEOUT = 2.0         # client retransmit interval (seconds); >=0.5
+TIMEOUT = 0.6         # client retransmit interval (seconds); >=0.5
 
-def stage_a(c):
+def stage_a(c_udp):
     """
     Returns tuple containing (num, len, udp_port, secretA) from step a2.
     Args: client udp socket c
-    Sends "hello world" UDP packet to attu2.cs.washington.edu on port 12235.
+    Sends "hello world" UDP packet to SERVER_HOST on STAGE_A_PORT.
     Processes server UDP response.
     """
-    print("stage a")
+    print("\n\nSTAGE A")
 
     # create packet to send
     c_struct = struct.Struct(f'{HEADER} 12s')
     c_payload_len = 12
     c_psecret = 0
-    payload = "hello world\0"
-    c_data = [c_payload_len, c_psecret, STEP, SID, payload.encode('utf-8')]
+    payload = "hello world\0".encode('utf-8')   # turn string to bytes
+    c_data = [c_payload_len, c_psecret, STEP, SID, payload]
     c_packet = c_struct.pack(*c_data)
 
     print(f'Sending: {str(c_packet)}')
-    c.sendto(c_packet, (SERVER_HOST, STAGE_A_PORT))
+    c_udp.sendto(c_packet, (SERVER_HOST, STAGE_A_PORT))
 
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L L L L')
-    s_packet, s_addr = c.recvfrom(BUF_SIZE)
+    s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, num, len, udp_port, secretA = s_struct.unpack(s_packet)
     print(f'Received: {num} {len} {udp_port} {secretA}')
     return (num, len, udp_port, secretA)
 
-def stage_b(c, num, len, udp_port, secretA):
+def stage_b(c_udp, num, len, udp_port, secretA):
     """
     Returns tuple containing (tcp_port, secretB) from step b2.
-    Args: client udp socket c, values provided by server from stage_a
+    Args: client udp socket c_udp, values provided by server from stage_a
     Sends num UDP packets to server on port udp_port, resending if needed.
     Processes all server UDP ack packets for each packet.
     Processes server b2 packet.
     """
-    print("stage b")
+    print("\n\nSTAGE B")
 
     # set client timeout to retransmission interval
-    c.settimeout(TIMEOUT)
+    c_udp.settimeout(TIMEOUT)
 
     # create client packet struct, with byte-aligned payload
     aligned_len = math.ceil(len/4) * 4
@@ -83,14 +83,14 @@ def stage_b(c, num, len, udp_port, secretA):
         acked = False
         while not acked:
             # send packet
-            print(f'\tSending: {c_packet.hex()}')
+            # print(f'\tSending: {c_packet.hex()}')
             # print(f'\tTime: {datetime.datetime.now().time()}')
-            c.sendto(c_packet, (SERVER_HOST, udp_port))
+            c_udp.sendto(c_packet, (SERVER_HOST, udp_port))
 
             # check for ack
             try:
                 # receive server ack packet
-                s_packet, s_addr = c.recvfrom(BUF_SIZE)
+                s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
                 s_plen, s_psecret, s_step, s_sid, acked_packet_id = s_ack_struct.unpack(s_packet)
                 print(f'\tReceived ack for packet {acked_packet_id}: {s_packet}')
                 # print(f'\tTime: {datetime.datetime.now().time()}')
@@ -103,52 +103,93 @@ def stage_b(c, num, len, udp_port, secretA):
 
     # all packets sent and acked, so process final server packet
     # unset client timeout
-    c.settimeout(None)
+    c_udp.settimeout(None)
 
     # receive server response
     s_struct = struct.Struct(f'{HEADER} L L')
-    s_packet, s_addr = c.recvfrom(BUF_SIZE)
+    s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, tcp_port, secretB = s_struct.unpack(s_packet)
     print(f'Received: {tcp_port} {secretB}')
     return (tcp_port, secretB)
 
-def stage_c(tcp_port, secretB):
+def stage_c(c_tcp, tcp_port, secretB):
     """
     Returns tuple containing (num2, len2, secretC, c) from step c2.
-    Args: values provided by server from stage_b
-    Opens TCP connection to server on port tcp_port.
+    Args: client tcp socket c_tcp, values provided by server from stage_b
     Processes server c2 packet.
     """
-    print("stage c")
+    print("\n\nSTAGE C")
+    # receive server packet
+    s_struct = struct.Struct(f'{HEADER} L L L c 3x') # 3x for 3 pad bytes
+    s_packet = c_tcp.recv(BUF_SIZE)
+    s_plen, s_psecret, s_step, s_sid, num2, len2, secretC, character = s_struct.unpack(s_packet)
+    print(f'Received: {num2} {len2} {secretC} {character}')
+    return (num2, len2, secretC, character)
 
-def stage_d(num2, len2, secretC, c):
+def stage_d(c_tcp, num2, len2, secretC, character):
     """
     Returns secretD.
-    Args: values provided by server from stage_d
-    Sends num2 packets to server (on port tcp_port?).
+    Args: client tcp socket c_tcp, values provided by server from stage_d
+    Sends num2 packets to server via c_tcp.
     Processes server d2 packet.
     """
+    print("\n\nSTAGE D")
+    # create client packet struct, with 4-byte-aligned payload
+    pad_len = 4 - (len2 % 4)
+    c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}B')
+
+    # create packet to send
+    chars = [character] * len2  # payload character array
+    pads = [0] * pad_len        # payload padding array
+    c_data = [len2, secretC, STEP, SID] + chars + pads
+    c_packet = c_struct.pack(*c_data)
+    print(f'Packet to send: {c_packet.hex()}')
+
+    # for each packet
+    for i in range(num2):
+        print(f'Sending tcp packet {i}.')
+        c_tcp.sendall(c_packet)     # sendall ensures all bytes are sent
+
+    # all packets sent, so process final server packet
+    s_struct = struct.Struct(f'{HEADER} L')
+    s_packet = c_tcp.recv(BUF_SIZE)
+    s_plen, s_psecret, s_step, s_sid, secretD = s_struct.unpack(s_packet)
+    print(f'Received: {secretD}')
+    return secretD
+
 
 def run_client():
     """
     Runs the client and its stages.
     """
     # Create client UDP socket. TODO: do we need to support ipv6
-    print("created client")
-    c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print("RUN CLIENT STAGES")
+    c_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # Run stages
-    num, len, udp_port, secretA = stage_a(c)
-
+    # Run stages A and B
+    num, len, udp_port, secretA = stage_a(c_udp)
     # temp:
     # num, len, udp_port, secretA = (5, 1, 5555, 1212)
+    tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
 
-    tcp_port, secretB = stage_b(c, num, len, udp_port, secretA)
-    num2, len2, secretC, c = stage_c(tcp_port, secretB)
-    secretD = stage_d(num2, len2, secretC, c)
+    # Create client TCP connection.
+    c_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    c_tcp.connect((SERVER_HOST, tcp_port))
+
+    # Run stages C and D
+    num2, len2, secretC, character = stage_c(c_tcp, tcp_port, secretB)
+    secretD = stage_d(c_tcp, num2, len2, secretC, character)
 
     # Close shop
-    c.close()
+    c_udp.close()
+    c_tcp.close()
+
+    # Print results
+    print("\n\nFINISHED CLIENT STAGES")
+    print(f'secretA: {secretA}')
+    print(f'secretB: {secretB}')
+    print(f'secretC: {secretC}')
+    print(f'secretD: {secretD}')
 
 if __name__ == '__main__':
     run_client()
