@@ -2,12 +2,12 @@
 import socket
 import struct
 import math
-import datetime
+### import datetime
 # import utility functions; call with utils.helper.get_packet_header()
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import utils.helper
+### import sys
+### import os
+### sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+### import utils.helper
 
 # Set host name and port used by server
 # to test locally
@@ -23,7 +23,7 @@ BUF_SIZE = 1024      # size of data buffer
 HEADER = '> L L H H' # packet header struct
 STEP = 1             # client header step number; always 1
 SID = 160            # header student id
-TIMEOUT = 0.6         # client retransmit interval (seconds); >=0.5
+TIMEOUT = 0.6        # client retransmit interval (seconds); >=0.5
 
 def stage_a(c_udp):
     """
@@ -135,22 +135,21 @@ def stage_d(c_tcp, num2, len2, secretC, character):
     """
     print("\n\nSTAGE D")
     # create client packet struct, with 4-byte-aligned payload
-    pad_len = 4 - (len2 % 4)
-    c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}B')
+    pad_len = (4 - (len2 % 4)) % 4
+    c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
 
     # create packet to send
     chars = [character] * len2  # payload character array
-    pads = [0] * pad_len        # payload padding array
-    c_data = [len2, secretC, STEP, SID] + chars + pads
+    c_data = [len2, secretC, STEP, SID] + chars
     c_packet = c_struct.pack(*c_data)
     print(f'Packet to send: {c_packet.hex()}')
 
-    # for each packet
+    # send num2 packets to server
     for i in range(num2):
         print(f'Sending tcp packet {i}.')
         c_tcp.sendall(c_packet)     # sendall ensures all bytes are sent
 
-    # all packets sent, so process final server packet
+    # receive server packet
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = c_tcp.recv(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, secretD = s_struct.unpack(s_packet)
@@ -168,8 +167,6 @@ def run_client():
 
     # Run stages A and B
     num, len, udp_port, secretA = stage_a(c_udp)
-    # temp:
-    # num, len, udp_port, secretA = (5, 1, 5555, 1212)
     tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
 
     # Create client TCP connection.
