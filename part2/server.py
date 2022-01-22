@@ -38,13 +38,8 @@ def s_stage_a(s):
     # generating random num
     num = random.randint(1,500)
     len = random.randint(1,500)
-<<<<<<< HEAD
-    udp_port = random.randint(1,1000) + 1024
-    secretA = random.randint(1, 500)
-=======
     udp_port = random.randint(1,500)
     secretA = random.randint(1,500)
->>>>>>> ed0d694d1f7e905deb827f6435fe674fa0625fe7
 
     s_payload_len = 16
     s_step = 0
@@ -59,7 +54,6 @@ def s_stage_a(s):
     return (num, len, udp_port, secretA)
 
 
-<<<<<<< HEAD
 def s_stage_b(c,num, len, udp_port, secretA):
     # stage b
 
@@ -68,7 +62,6 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
     s_data = c.recv(1024)
     packet_id, payload_len, psecret = s_struct.unpack(s_data)
-
 
     # do the verifying
     # if not valid
@@ -95,34 +88,6 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_packet = s_send_struct.pack(*s_data)
     c.sendto(s_packet, (HOST, PORT))
     return(tcp_port, secretB)
-=======
-              #temp s variable
-# def s_stage_b(c,num, len, udp_port, secretA):
-#     # transmit nump UDP packets on port udp_port (from stage a)
-
-#     # want to verify the recieved data
-#     aligned_len = math.ceil(len/4) * 4
-#     s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
-#     s_data = c.recv(1024)
-
-#     # do the verifying
-#     # if not valid
-#     # close
-
-#     packet_id = 0
-#     while packet_id != num :
-#         ack = random.randint(1)
-#         if ack == 1 :
-
-
-    #secretB = "temp"
-    #tcp_port = "temp"
-    #do the sending
-
-
-
-#     #stage b
->>>>>>> ed0d694d1f7e905deb827f6435fe674fa0625fe7
 
 def s_stage_c(tcp_port, secretB):
 #     #stage c
