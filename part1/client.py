@@ -161,7 +161,7 @@ def run_client():
     """
     Runs the client and its stages.
     """
-    # Create client UDP socket. TODO: do we need to support ipv6
+    # Create client UDP socket.
     print("RUN CLIENT STAGES")
     c_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
