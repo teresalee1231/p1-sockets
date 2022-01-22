@@ -57,6 +57,12 @@ def s_stage_a(s):
 def s_stage_b(c,num, len, udp_port, secretA):
     # stage b
 
+    # needs to listen to the new port udp_port
+    s_new_port = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print('New UDP_PORT Socket Created!')
+    s_new_port.bind(('localhost', udp_port))
+
+
     # want to verify the recieved data
     aligned_len = math.ceil(len/4) * 4
     s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
@@ -99,14 +105,14 @@ def s_stage_c(tcp_port, secretB):
 
     tcp_c, addr = tcp_s.accept()
     print("Connected with ", addr)
-    tcp_c.send(bytes("You've connected to the server!", 'utf-8'))
+    #tcp_c.send(bytes("You've connected to the server!", 'utf-8'))
 
 
     # Payload
-    num2 = random.randint(500)
-    len2 = random.randint(500)
-    secretC = random.randint(500)
-    char_c = 'a'
+    num2 = random.randint(1,500)
+    len2 = random.randint(1,500)
+    secretC = random.randint(1,500)
+    char_c = 'a'.encode('utf-8')
 
     # Header
     payload_len = 13
@@ -114,9 +120,9 @@ def s_stage_c(tcp_port, secretB):
     step = 2
 
     aligned_len = math.ceil(payload_len/4) * 4
-    zeros = [0] * (aligned_len - payload_len)
-    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c] + zeros
-    s_struct = struct.Struct(f'{HEADER} L L L 1s 3B')
+    #zeros = [0] * (aligned_len - payload_len)
+    s_data = [payload_len, psecret, step, SID, num2, len2, secretC, char_c]
+    s_struct = struct.Struct(f'{HEADER} L L L c 3x')
     s_packet = s_struct.pack(*s_data)
 
     tcp_c.send(s_packet)
@@ -127,8 +133,12 @@ def s_stage_c(tcp_port, secretB):
 def s_stage_d(num2, len2, char_c, tcp_c, secretC):
 #     #stage d
 
+
+    for i in range(num2):
+        tcp_c.recv(1024)
+
     # Payload
-    secretD = random.randint(500)
+    secretD = random.randint(1,500)
 
     # Header
     payload_len = 4
@@ -226,7 +236,11 @@ def run_server():
     # Run Stages
 
     num, len, udp_port, secretA = s_stage_a(s)
-    tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+    #tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+
+    # testing stage c and d
+    tcp_port = 1000
+    secretB = 1000
     num2, len2, char_c, tcp_c, secretC = s_stage_c(tcp_port, secretB)
     s_stage_d(num2, len2, char_c, tcp_c, secretC)
 
@@ -234,6 +248,3 @@ def run_server():
 if __name__ == '__main__':
     #old_server()
     run_server()
-
-
-
