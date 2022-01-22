@@ -17,3 +17,6 @@ Make sure server code is running first.
 Enter to command line:
 
 python3 client.py
+
+To shut down:
+Ctrl-C
