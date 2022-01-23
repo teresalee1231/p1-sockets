@@ -67,7 +67,7 @@ def s_stage_b(c,num, len, udp_port, secretA):
     aligned_len = math.ceil(len/4) * 4
     s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
     s_data = c.recv(1024)
-    packet_id, payload_len, psecret = s_struct.unpack(s_data)
+    packet_id, payload_len, psecret, c_num = s_struct.unpack(s_data)
 
     # do the verifying
     # if not valid
@@ -80,19 +80,21 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_payload_len = payload_len + 4
     s_step = 1
     acked_packet_id = 0
-    while packet_id != num :
-        ack = random.randint(0,1)
-        if ack == 1 :
-            acked_packet_id += 1
-            # continue
-        else :
-            # if it isnt acked, then we should send it back and recieve again??
-            # TODO: figure out the else branch
-            c.sendto(s_struct, (HOST, PORT))
-    s_data = [s_payload_len, psecret, s_step, SID, num, len, acked_packet_id ,tcp_port, secretB]
-    s_send_struct = struct.Struct(f'{HEADER} L L')
-    s_packet = s_send_struct.pack(*s_data)
-    c.sendto(s_packet, (HOST, PORT))
+
+    ack = random.randint(0,1)
+    if ack == 1 :
+        acked_packet_id += 1
+        # continue
+    else :
+        # if it isnt acked, then we should send it back and recieve again??
+        # TODO: figure out the else branch
+        c.sendto(s_struct, (HOST, PORT))
+
+    if (c_num == num) :
+        s_data = [s_payload_len, psecret, s_step, SID, num, len, acked_packet_id ,tcp_port, secretB]
+        s_send_struct = struct.Struct(f'{HEADER} L L')
+        s_packet = s_send_struct.pack(*s_data)
+        c.sendto(s_packet, (HOST, PORT))
     return(tcp_port, secretB)
 
 def s_stage_c(tcp_port, secretB):
