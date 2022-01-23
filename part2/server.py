@@ -59,7 +59,6 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_new_port = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print('New UDP_PORT Socket Created!')
     s_new_port.bind(('localhost', udp_port))
-    print(udp_port)
 
     # packet_id, payload_len, psecret, c_num = s_struct.unpack(s_data)
 
@@ -76,26 +75,10 @@ def s_stage_b(c,num, len, udp_port, secretA):
     aligned_len = math.ceil(len/4) * 4
     client_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
 
-    #a_plen = [0] * aligned_len
-
-    # s_data, c_addr = s_new_port.recvfrom(1024)
-    # print('received first!')
-    # ack = random.randint(0,1)
-    # print(ack)
-    # if ack == 1 :
-    #     payload_len, psecret, step, studentNum, a_packet_id, *a_plen = client_struct.unpack(s_data)
-    #     sendback = [s_payload_len, secretA, s_step, SID, a_packet_id]
-    #     sb_struct = struct.Struct(f'{HEADER} L')
-    #     packed = sb_struct.pack(*sendback)
-    #     c.sendto(packed, c_addr)
-    #     packet_id = a_packet_id
-
     s_data, c_addr = s_new_port.recvfrom(1024)
 
     while packet_id != (num - 1) :
-        print(packet_id)
         ack = random.randint(0,1)
-        #print('inside while loop ack' + ack)
         if ack == 1 :
             payload_len, psecret, step, studentNum, a_packet_id, *a_plen = client_struct.unpack(s_data)
             sendback = [s_payload_len, secretA, s_step, SID, a_packet_id]
