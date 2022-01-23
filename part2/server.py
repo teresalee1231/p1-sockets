@@ -36,7 +36,7 @@ def s_stage_a(s):
     # close_connection()
 
     # generating random num
-    num = random.randint(1,500)
+    num = random.randint(5,10)
     len = random.randint(1,500)
     udp_port = random.randint(1,500)
     secretA = random.randint(1,500)
@@ -59,6 +59,7 @@ def s_stage_b(c,num, len, udp_port, secretA):
     s_new_port = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print('New UDP_PORT Socket Created!')
     s_new_port.bind(('localhost', udp_port))
+    print(udp_port)
 
     # packet_id, payload_len, psecret, c_num = s_struct.unpack(s_data)
 
@@ -74,22 +75,42 @@ def s_stage_b(c,num, len, udp_port, secretA):
 
     aligned_len = math.ceil(len/4) * 4
     client_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
-    while packet_id == (num - 1) :
+
+    #a_plen = [0] * aligned_len
+
+    # s_data, c_addr = s_new_port.recvfrom(1024)
+    # print('received first!')
+    # ack = random.randint(0,1)
+    # print(ack)
+    # if ack == 1 :
+    #     payload_len, psecret, step, studentNum, a_packet_id, *a_plen = client_struct.unpack(s_data)
+    #     sendback = [s_payload_len, secretA, s_step, SID, a_packet_id]
+    #     sb_struct = struct.Struct(f'{HEADER} L')
+    #     packed = sb_struct.pack(*sendback)
+    #     c.sendto(packed, c_addr)
+    #     packet_id = a_packet_id
+
+    s_data, c_addr = s_new_port.recvfrom(1024)
+
+    while packet_id != (num - 1) :
+        print(packet_id)
         ack = random.randint(0,1)
-        s_data = c.recvfrom(1024)
+        #print('inside while loop ack' + ack)
         if ack == 1 :
-            payload_len, psecret, step, studentNum, a_packet_id, a_plen = client_struct.unpack(s_data)
+            payload_len, psecret, step, studentNum, a_packet_id, *a_plen = client_struct.unpack(s_data)
             sendback = [s_payload_len, secretA, s_step, SID, a_packet_id]
             sb_struct = struct.Struct(f'{HEADER} L')
             packed = sb_struct.pack(*sendback)
-            c.sendto(packed, (HOST, PORT))
+            c.sendto(packed, c_addr)
             packet_id = a_packet_id
+            if (packet_id != (num - 1)):
+                s_data, c_addr = s_new_port.recvfrom(1024)
 
     s_payload_len = 8
     s_data = [s_payload_len, secretA, s_step, SID,tcp_port, secretB]
     s_send_struct = struct.Struct(f'{HEADER} L L')
     s_packet = s_send_struct.pack(*s_data)
-    c.sendto(s_packet, (HOST, PORT))
+    c.sendto(s_packet, c_addr)
     return(tcp_port, secretB)
 
 def s_stage_c(tcp_port, secretB):
@@ -233,7 +254,7 @@ def run_server():
     # Run Stages
 
     num, len, udp_port, secretA = s_stage_a(s)
-    tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+    tcp_port, secretB = s_stage_b(s, num, len, udp_port, secretA)
 
     # testing stage c and d
     # tcp_port = 1000

@@ -74,6 +74,7 @@ def stage_b(c_udp, num, len, udp_port, secretA):
     # for each packet
     for i in range(num):
         print(f'Transmit udp packet {i}.')
+        print(udp_port)
         # create packet to send
         c_data = [c_payload_len, secretA, STEP, SID, i] + zeros
         c_packet = c_struct.pack(*c_data)
@@ -83,8 +84,8 @@ def stage_b(c_udp, num, len, udp_port, secretA):
         acked = False
         while not acked:
             # send packet
-            # print(f'\tSending: {c_packet.hex()}')
-            # print(f'\tTime: {datetime.datetime.now().time()}')
+            print(f'\tSending: {c_packet.hex()}')
+            #print(f'\tTime: {datetime.datetime.now().time()}')
             c_udp.sendto(c_packet, (SERVER_HOST, udp_port))
 
             # check for ack
