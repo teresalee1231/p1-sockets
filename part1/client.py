@@ -122,6 +122,8 @@ def stage_c(c_tcp, tcp_port, secretB):
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L L L c 3x') # 3x for 3 pad bytes
     s_packet = c_tcp.recv(BUF_SIZE)
+    #print(s_packet)
+    #print(len(s_packet))
     s_plen, s_psecret, s_step, s_sid, num2, len2, secretC, character = s_struct.unpack(s_packet)
     print(f'Received: {num2} {len2} {secretC} {character}')
     return (num2, len2, secretC, character)
@@ -167,7 +169,9 @@ def run_client():
 
     # Run stages A and B
     num, len, udp_port, secretA = stage_a(c_udp)
-    tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
+    #tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
+    tcp_port = 1000
+    secretB = 1000
 
     # Create client TCP connection.
     c_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
