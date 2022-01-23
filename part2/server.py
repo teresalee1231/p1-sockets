@@ -49,8 +49,6 @@ def s_stage_a(s):
     s_packet = s_our_struct.pack(*s_data)
     #sending
     s.sendto(s_packet, c_addr)
-
-    #stage a
     return (num, len, udp_port, secretA)
 
 
@@ -62,39 +60,36 @@ def s_stage_b(c,num, len, udp_port, secretA):
     print('New UDP_PORT Socket Created!')
     s_new_port.bind(('localhost', udp_port))
 
+    # packet_id, payload_len, psecret, c_num = s_struct.unpack(s_data)
 
-    # want to verify the recieved data
-    aligned_len = math.ceil(len/4) * 4
-    s_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
-    s_data = c.recv(1024)
-    packet_id, payload_len, psecret, c_num = s_struct.unpack(s_data)
-
-    # do the verifying
     # if not valid
     # close_connection()
 
     # payload
     secretB = random.randint(1, 500)
     tcp_port = random.randint(1, 1000) + 1024
-    # TODO: idk how much the payload length is oops lol
-    s_payload_len = payload_len + 4
+    s_payload_len = 4
     s_step = 1
-    acked_packet_id = 0
+    packet_id = 0
 
-    ack = random.randint(0,1)
-    if ack == 1 :
-        acked_packet_id += 1
-        # continue
-    else :
-        # if it isnt acked, then we should send it back and recieve again??
-        # TODO: figure out the else branch
-        c.sendto(s_struct, (HOST, PORT))
+    aligned_len = math.ceil(len/4) * 4
+    client_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
+    while packet_id == (num - 1) :
+        ack = random.randint(0,1)
+        s_data = c.recvfrom(1024)
+        if ack == 1 :
+            payload_len, psecret, step, studentNum, a_packet_id, a_plen = client_struct.unpack(s_data)
+            sendback = [s_payload_len, secretA, s_step, SID, a_packet_id]
+            sb_struct = struct.Struct(f'{HEADER} L')
+            packed = sb_struct.pack(*sendback)
+            c.sendto(packed, (HOST, PORT))
+            packet_id = a_packet_id
 
-    if (c_num == num) :
-        s_data = [s_payload_len, psecret, s_step, SID, num, len, acked_packet_id ,tcp_port, secretB]
-        s_send_struct = struct.Struct(f'{HEADER} L L')
-        s_packet = s_send_struct.pack(*s_data)
-        c.sendto(s_packet, (HOST, PORT))
+    s_payload_len = 8
+    s_data = [s_payload_len, secretA, s_step, SID,tcp_port, secretB]
+    s_send_struct = struct.Struct(f'{HEADER} L L')
+    s_packet = s_send_struct.pack(*s_data)
+    c.sendto(s_packet, (HOST, PORT))
     return(tcp_port, secretB)
 
 def s_stage_c(tcp_port, secretB):
@@ -238,11 +233,11 @@ def run_server():
     # Run Stages
 
     num, len, udp_port, secretA = s_stage_a(s)
-    #tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
+    tcp_port, secretB = s_stage_b(num, len, udp_port, secretA)
 
     # testing stage c and d
-    tcp_port = 1000
-    secretB = 1000
+    # tcp_port = 1000
+    # secretB = 1000
     num2, len2, char_c, tcp_c, secretC = s_stage_c(tcp_port, secretB)
     s_stage_d(num2, len2, char_c, tcp_c, secretC)
 

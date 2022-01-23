@@ -169,9 +169,9 @@ def run_client():
 
     # Run stages A and B
     num, len, udp_port, secretA = stage_a(c_udp)
-    #tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
-    tcp_port = 1000
-    secretB = 1000
+    tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
+    # tcp_port = 1000
+    # secretB = 1000
 
     # Create client TCP connection.
     c_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
