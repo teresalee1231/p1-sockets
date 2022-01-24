@@ -70,7 +70,6 @@ def s_stage_b(s_udp, c_addr, num, len, udp_port, secretA):
     aligned_len = math.ceil(len/4) * 4
     client_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
 
-    # TODO: shouldn't this be in the loop (ಠ ͜ ಠ)
     s_data, addr = s_udp.recvfrom(BUF_SIZE)
 
     packet_id = 0
