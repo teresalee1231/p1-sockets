@@ -22,15 +22,23 @@ SID = 160
 HEADER = '> L L H H' # packet header struct
 BUF_SIZE = 2048
 
-# Set max number of clients that can be served
-MAX_CONNECTIONS = 10
+# Set max number of clients that can be served by TCP socket
+MAX_CONNECTIONS = 1
 
+# Lock for binding to empty ports
+port_bind_lock = threading.Lock()
 
-def s_stage_a(s_udp, c_addr, udp_port):
+def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     """
-    Runs stage A2, server sending response packet to client.
+    Validates a1 packet and runs stage A2, server sending response packet to client.
     Note that stage A1 is completed in run_server()
     """
+    c_struct = struct.Struct(f'{HEADER} 12s')
+    c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
+    print(f'Received a1 packet from client: {c_addr}')
+
+    # TODO: validate client header + payload
+
     # generating random num
     num = random.randint(1,20)
     len = random.randint(0,20)
@@ -46,10 +54,10 @@ def s_stage_a(s_udp, c_addr, udp_port):
 
     # Send server packet
     s_udp.sendto(s_packet, c_addr)
-    return (num, len, udp_port, secretA)
+    return (num, len, secretA)
 
 
-def s_stage_b(s_udp, c_addr, num, len, udp_port, secretA):
+def s_stage_b(s_udp, c_addr, num, len, secretA):
     """
     Runs stage B, also creating and binding the server tcp socket for use in stages B and C.
     Args: server udp port to use, client address, args from stage A.
@@ -97,7 +105,7 @@ def s_stage_b(s_udp, c_addr, num, len, udp_port, secretA):
     s_send_struct = struct.Struct(f'{HEADER} L L')
     s_packet = s_send_struct.pack(*s_data)
     s_udp.sendto(s_packet, c_addr)
-    return(s_tcp, tcp_port, secretB)
+    return(s_tcp, secretB)
 
 def s_stage_c(c_tcp, secretB):
 #     #stage c
@@ -145,32 +153,38 @@ def detectedFailure(client_socket):
     client_socket.close()
 
 
-def handle_client(s_udp, c_addr, udp_port):
+def handle_client(c_addr, c_a1_packet):
     """
     Handles given client by running the rest of Stage A, and Stages B,C,D.
     Thread-safe (assuming s_udp won't be used by other threads).
-    s_udp: server udp socket to use to send response in stage A, send/receive in stage B
     c_addr: client address
-    udp_port: port number of s_udp
+    c_a1_packet: step a1 packet from client
     """
-    # Run stage A and B
-    num, len, udp_port, secretA = s_stage_a(s_udp, c_addr, udp_port)
-    s_tcp, tcp_port, secretB = s_stage_b(s_udp, c_addr, num, len, udp_port, secretA)
+    # Create dedicated udp port for client to use in stage A2 and B.
+    # (to avoid concurrent access of s_udp_a)
+    s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_port = bind_to_open_port(s_udp_b)
+    print(f'Created server UDP socket for a2/b: {udp_port}')
 
-    # Establish TCP connection with client (tcp socket was made at end of stage B).
+    # Run stage A and B
+    num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
+    s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
+
+    # Establish TCP connection with client (tcp socket was made/bound at end of stage B)
     s_tcp.listen(MAX_CONNECTIONS)
     c_tcp, c_tcp_addr = s_tcp.accept()
     print("Established client tcp connection:", c_tcp_addr)
 
-    # stage c and d
+    # Run stage c and d
     num2, len2, secretC, char_c = s_stage_c(c_tcp, secretB)
     s_stage_d(c_tcp, num2, len2, secretC, char_c)
 
 def bind_to_open_port(s_socket):
     """
-    Binds given server socket to an open port, returns the port number.
+    Binds given server socket to an open port, returns the port number. Thread-safe.
     """
-    s_socket.bind((HOST, 0))
+    with port_bind_lock:
+        s_socket.bind((HOST, 0))
     return s_socket.getsockname()[1]
 
 def run_server():
@@ -208,25 +222,14 @@ def run_server():
 
 
     # Wait for client udp packets
-    c_struct = struct.Struct(f'{HEADER} 12s')
     while True:
         print("Waiting for client connection...")
-        # STAGE A1 ---------------------------
+        # Recieve A1 packet ---------------------------
         c_packet, c_addr = s_udp_a.recvfrom(BUF_SIZE)
-        c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
-        print(f'Received a1 packet from client: {c_addr}')
-
-        # TODO: validate client header + payload
-
-        # Create dedicated udp port for client to use in stage A2 and B.
-        # (to avoid concurrent access of s_udp_a)
-        s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        udp_port = bind_to_open_port(s_udp_b)
-        print(f'Created server UDP socket b: {udp_port}')
 
         # handle the rest of client stages via thread
         print(f'Create client thread')
-        c_thread = threading.Thread(target = handle_client, args = (s_udp_b, c_addr, udp_port))
+        c_thread = threading.Thread(target = handle_client, args = (c_addr, c_packet))
         c_thread.start()
 
 if __name__ == '__main__':
