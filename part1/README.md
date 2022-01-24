@@ -12,11 +12,12 @@ secretC: 1  \
 secretD: 1
 
 ### Instructions on how to compile and run your code:
-Make sure server code is running first.
+Make sure server is running first.
 
 Enter to command line:
 
 python3 client.py
 
 To shut down:
+
 Ctrl-C

@@ -7,3 +7,7 @@ Ashley Luty (aluty02)
 Enter to command line:
 
 python3 server.py
+
+To shut down server:
+
+Ctrl+C
