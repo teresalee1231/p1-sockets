@@ -99,8 +99,7 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
                 c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
                 if (c_payload_len != len + 4) :
                     detectedFailure()
-                # ****this MIGHT not work because we are updating packet_id = c_packet_id near the end?****
-                if (c_packet_id > packet_id) :
+                if (c_packet_id == packet_id) :
                     detectedFailure()
                 # theres probably a better way to do thisLOL
                 count_length = 0
@@ -108,10 +107,10 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
                     count_length += 1
                     if (zeros != 0) :
                         detectedFailure()
-                ## is this correct? im probably overthinking it lol
-                if (c_payload_len != count_length) :
+                # verifying the zeros in the payload
+                if (c_payload_len - 4 != (count_length - (aligned_len - len))) :
                     detectedFailure()
-                if (c_psecret != secretA or c_step != 0 or c_sid != SID) :
+                if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
                     detectedFailure()
                 ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
                 ack_packet = ack_struct.pack(*ack_data)
