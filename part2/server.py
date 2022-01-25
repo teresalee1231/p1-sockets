@@ -162,18 +162,24 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
-        c_packet = c_tcp.recv(1024)
-        c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
-        #print(payload)
-        #print('hello')
+        try:
+            c_packet = c_tcp.recv(1024)
+            c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
+        except:
+            detectedFailure()
+
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
             detectedFailure()
         #validating the payload
         # TODO: actual lenght of payload
+        payload_count = 0
         for character in payload:
+            payload_count += 1
             if character != char_c:
                 detectedFailure()
+        if (payload_count != c_plen != len2):
+            detectedFailure()
 
     # Payload
     secretD = random.randint(1,500)
