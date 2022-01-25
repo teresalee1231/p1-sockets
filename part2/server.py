@@ -32,14 +32,11 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     Note that stage A1 is completed in run_server()
     """
     c_struct = struct.Struct(f'{HEADER} 12s')
-
     c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
-
     print(f'Received a1 packet from client: {c_addr}')
 
-    if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
-        detectedFailure()
-    if (c_sid != SID or c_step != 1) :
+    # Validate a1 header and payload
+    if (c_plen != 12 or c_psecret != 0 or c_step != 1 or c_sid != SID) :
         detectedFailure()
     if (payload.decode() != "hello world\0") :
         detectedFailure()
@@ -86,33 +83,38 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
         # Must receive client packet
         s_data, addr = s_udp.recvfrom(BUF_SIZE)
 
+        # Validate client packet
+        c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
+        # verifying header payload len = length + 4
+        if (c_payload_len != length + 4) :
+            detectedFailure()
+        # verify rest of header
+        if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
+            detectedFailure()
+        # verify payload is all 0s
+        for zero in c_payload :
+            if (zero != 0) :
+                detectedFailure()
+        # verifying the # zeros in the payload
+        if (length != len(c_payload)) :
+            detectedFailure()
+        # verifying that packets arrive in order
+        if (c_packet_id > curr_packet_id or c_packet_id < 0):
+            detectedFailure()
+        elif (c_packet_id < curr_packet_id):
+            # for some reason a previous packet was resent, so ignore it
+            continue
+
         # Decide to ack or not
         ack = random.randint(0,1)
         if ack == 1 :
             print(f'Ack packet {curr_packet_id}')
-            c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
-            # verifying data = len + 4
-            if (c_payload_len != length + 4) :
-                detectedFailure()
-            # verifying that packets arrive in order
-            if (c_packet_id != curr_packet_id) :
-                detectedFailure()
-            # verify payload is all 0s
-            for zero in c_payload :
-                if (zero != 0) :
-                    detectedFailure()
-            # verifying the # zeros in the payload
-            if (length != len(c_payload)) :
-                detectedFailure()
-            # verify header
-            if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
-                detectedFailure()
-            # send ack
+            # Send ack
             ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
             ack_packet = ack_struct.pack(*ack_data)
             s_udp.sendto(ack_packet, c_addr)
 
-            # Ack'd this packet, so move on to next packet.
+            # Ack'd this packet, so move on to next packet
             curr_packet_id += 1
 
     # Create tcp socket for stage C and D. Has to be created here since we
@@ -120,10 +122,7 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
 
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_tcp.settimeout(TIMEOUT)
-    try:
-        tcp_port = bind_to_open_port(s_tcp)
-    except socket.timeout:
-        detectedFailure()
+    tcp_port = bind_to_random_port(s_tcp)
 
     # Create packet for stage b2
     secretB = random.randint(1, 500)
@@ -136,7 +135,7 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
     return(s_tcp, secretB)
 
 def s_stage_c(c_tcp, secretB):
-#     #stage c
+    # stage c2
     # Payload
     num2 = random.randint(1,20)
     len2 = random.randint(0,20)
@@ -154,7 +153,6 @@ def s_stage_c(c_tcp, secretB):
 
     c_tcp.send(s_packet)
     return (num2, len2, secretC, char_c)
-
 
 def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     pad_len = (4 - (len2 % 4)) % 4
@@ -214,7 +212,7 @@ def handle_client(c_addr, c_a1_packet):
         s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s_udp_b.settimeout(TIMEOUT)
         try :
-            udp_port = bind_to_open_port(s_udp_b)
+            udp_port = bind_to_random_port(s_udp_b)
             print(f'Created server UDP socket for a2/b: {udp_port}')
             # Run stage A and B
             num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
@@ -246,12 +244,22 @@ def handle_client(c_addr, c_a1_packet):
         c_tcp.close()
 
 
-def bind_to_open_port(s_socket):
+def bind_to_random_port(s_socket):
     """
-    Binds given server socket to an open port, returns the port number. Thread-safe.
+    Binds given server socket to a random port, returns the port number. Thread-safe.
     """
     with port_bind_lock:
-        s_socket.bind((HOST, 0))
+        bound = False
+        # try 100 times to find an open port
+        for i in range(0, 100):
+            try:
+                s_socket.bind((HOST, random.randint(1024, 65535)))
+                bound = True
+                break
+            except:
+                bound = False
+        if bound == False:
+             raise Exception("Could not find an open port to bind to.")
     return s_socket.getsockname()[1]
 
 def run_server():
