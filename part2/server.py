@@ -45,7 +45,7 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
         detectedFailure()
 
     # generating random num
-    num = random.randint(1,20)
+    num = 1
     len = random.randint(0,20)
     secretA = random.randint(1,500)
 
@@ -62,7 +62,7 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     return (num, len, secretA)
 
 
-def s_stage_b(s_udp, c_addr, num, len, secretA):
+def s_stage_b(s_udp, c_addr, num, length, secretA):
     """
     Runs stage B, also creating and binding the server tcp socket for use in stages B and C.
     Args: server udp port to use, client address, args from stage A.
@@ -76,39 +76,44 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
     ack_step = 1
 
     # client packet info
-    aligned_len = math.ceil(len/4) * 4
-    client_struct = struct.Struct(f'{HEADER} L {aligned_len}B')
+    pad_len = (4 - (length % 4)) % 4
+    client_struct = struct.Struct(f'{HEADER} L {length}B {pad_len}x')
 
-    s_data, addr = s_udp.recvfrom(BUF_SIZE)
+    # For each packet we need to receive, in order
+    curr_packet_id = 0
+    while curr_packet_id != num :
+        print(f'Checking for packet {curr_packet_id}')
+        # Must receive client packet
+        s_data, addr = s_udp.recvfrom(BUF_SIZE)
 
-    packet_id = 0
-    while packet_id != (num - 1) :
+        # Decide to ack or not
         ack = random.randint(0,1)
         if ack == 1 :
+            print(f'Ack packet {curr_packet_id}')
             c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
             # verifying data = len + 4
-            if (c_payload_len != len + 4) :
+            if (c_payload_len != length + 4) :
                 detectedFailure()
             # verifying that packets arrive in order
-            if (packet_id - 1 > c_packet_id) :
+            if (c_packet_id != curr_packet_id) :
                 detectedFailure()
-            count_length = 0
-            for zeros in c_payload :
-                count_length += 1
-                # verifying the zeros in the payload
-                if (zeros != 0) :
+            # verify payload is all 0s
+            for zero in c_payload :
+                if (zero != 0) :
                     detectedFailure()
-            # verifying the zeros in the payload
-            if (c_payload_len - 4 != (count_length - (aligned_len - len))) :
+            # verifying the # zeros in the payload
+            if (length != len(c_payload)) :
                 detectedFailure()
+            # verify header
             if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
                 detectedFailure()
+            # send ack
             ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
             ack_packet = ack_struct.pack(*ack_data)
             s_udp.sendto(ack_packet, c_addr)
-            packet_id = c_packet_id
-            if (packet_id != (num - 1)):
-                s_data, c_addr = s_udp.recvfrom(BUF_SIZE)
+
+            # Ack'd this packet, so move on to next packet.
+            curr_packet_id += 1
 
     # Create tcp socket for stage C and D. Has to be created here since we
     # gotta return the tcp port but don't know which ones are open.
