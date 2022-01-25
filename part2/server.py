@@ -9,6 +9,7 @@ import random
 import struct
 import math
 import threading
+import time
 
 # Set host name and port used by server
 HOST = 'localhost'
@@ -25,6 +26,8 @@ BUF_SIZE = 2048
 # Set max number of clients that can be served by TCP socket
 MAX_CONNECTIONS = 1
 
+TIMEOUT = 3
+
 # Lock for binding to empty ports
 port_bind_lock = threading.Lock()
 
@@ -33,11 +36,15 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     Validates a1 packet and runs stage A2, server sending response packet to client.
     Note that stage A1 is completed in run_server()
     """
+    s_udp.settimeout(TIMEOUT)
     c_struct = struct.Struct(f'{HEADER} 12s')
-    c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
+    try:
+        c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
+    except socket.timeout:
+        detectedFailure()
+    s_udp.settimeout(None)
     print(f'Received a1 packet from client: {c_addr}')
 
-    # TODO: validate client header + payload
     if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
         detectedFailure()
     if (c_sid != SID or c_step != 1) :
@@ -82,29 +89,39 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
 
     s_data, addr = s_udp.recvfrom(BUF_SIZE)
 
+    s_udp.settimeout(TIMEOUT)
+
     packet_id = 0
     while packet_id != (num - 1) :
-        ack = random.randint(0,1)
-        if ack == 1 :
-            c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
-            if (c_payload_len != len + 4) :
-                detectedFailure()
-                # or is it c_packet_id idk lol
-            # TODO: fix this logic
-            if (c_packet_id > num - 1) :
-                detectedFailure()
-            # TODO: check if payload is all 0's, AND if the length of the payload
-            # is actually correct, what it should be and if it matches the header
-            if (c_psecret != secretA) :
-                detectedFailure()
-            # TODO: check c_step, c_sid
-            ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
-            ack_packet = ack_struct.pack(*ack_data)
-            s_udp.sendto(ack_packet, c_addr)
-            packet_id = c_packet_id
-            if (packet_id != (num - 1)):
-                s_data, c_addr = s_udp.recvfrom(BUF_SIZE)
-
+        try :
+            ack = random.randint(0,1)
+            if ack == 1 :
+                c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
+                if (c_payload_len != len + 4) :
+                    detectedFailure()
+                # ****this MIGHT not work because we are updating packet_id = c_packet_id near the end?****
+                if (c_packet_id > packet_id) :
+                    detectedFailure()
+                # theres probably a better way to do thisLOL
+                count_length = 0
+                for zeros in c_payload :
+                    count_length += 1
+                    if (zeros != 0) :
+                        detectedFailure()
+                ## is this correct? im probably overthinking it lol
+                if (c_payload_len != count_length) :
+                    detectedFailure()
+                if (c_psecret != secretA or c_step != 0 or c_sid != SID) :
+                    detectedFailure()
+                ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
+                ack_packet = ack_struct.pack(*ack_data)
+                s_udp.sendto(ack_packet, c_addr)
+                packet_id = c_packet_id
+                if (packet_id != (num - 1)):
+                    s_data, c_addr = s_udp.recvfrom(BUF_SIZE)
+        except socket.timeout:
+            detectedFailure()
+    s_udp.settimeout(None)
     # Create tcp socket for stage C and D. Has to be created here since we
     # gotta return the tcp port but don't know which ones are open.
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
