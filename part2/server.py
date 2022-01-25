@@ -2,7 +2,6 @@
 import socket
 import random
 import struct
-import math
 import threading
 
 # Set host name and port used by server
@@ -162,13 +161,12 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
             c_packet = c_tcp.recv(BUF_SIZE)
             c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
         except:
-            detectedFailure()
+            raise Exception("(d1) socket timeout or client packet format error")
 
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
             detectedFailure()
         #validating the payload
-        # TODO: actual lenght of payload
         payload_count = 0
         for character in payload:
             payload_count += 1
@@ -213,8 +211,9 @@ def handle_client(c_addr, c_a1_packet):
         # Run stage A and B
         num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
         s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
-    except:
-        raise Exception("There was an error in stage A/B")
+    except Exception as e:
+        print(f'There was an error in stage A/B: {str(e)}')
+        return
     finally:
         s_udp_b.close()
 
@@ -224,15 +223,17 @@ def handle_client(c_addr, c_a1_packet):
         c_tcp, c_tcp_addr = s_tcp.accept()
         print("Established client tcp connection:", c_tcp_addr)
     except:
+        print("There was an error establishing TCP connection with client")
         s_tcp.close()
-        raise Exception("There was an error establishing TCP connection with client")
+        return
 
     try:
         # Run stage c and d
         num2, len2, secretC, char_c = s_stage_c(c_tcp, secretB)
         s_stage_d(c_tcp, num2, len2, secretC, char_c)
-    except:
-        raise Exception("There was an error in stage C/D")
+    except Exception as e:
+        print(f'There was an error in stage C/D: {str(e)}')
+        return
     finally:
         s_tcp.close()
         c_tcp.close()

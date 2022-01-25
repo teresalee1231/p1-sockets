@@ -43,6 +43,7 @@ def stage_a(c_udp):
     s_struct = struct.Struct(f'{HEADER} L L L L')
     s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, num, len, udp_port, secretA = s_struct.unpack(s_packet)
+    validate_header(s_plen, s_psecret, s_step, s_sid, 16, 0, 2)
     print(f'Received: {num} {len} {udp_port} {secretA}')
     return (num, len, udp_port, secretA)
 
@@ -87,6 +88,7 @@ def stage_b(c_udp, num, len, udp_port, secretA):
                 # receive server ack packet
                 s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
                 s_plen, s_psecret, s_step, s_sid, acked_packet_id = s_ack_struct.unpack(s_packet)
+                validate_header(s_plen, s_psecret, s_step, s_sid, 4, secretA, 1)
                 # print(f'\tReceived ack for packet {acked_packet_id}: {s_packet}')
                 # print(f'\tTime: {datetime.datetime.now().time()}')
                 acked = (i == acked_packet_id)
@@ -104,10 +106,11 @@ def stage_b(c_udp, num, len, udp_port, secretA):
     s_struct = struct.Struct(f'{HEADER} L L')
     s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, tcp_port, secretB = s_struct.unpack(s_packet)
+    validate_header(s_plen, s_psecret, s_step, s_sid, 8, secretA, 2)
     print(f'Received: {tcp_port} {secretB}')
     return (tcp_port, secretB)
 
-def stage_c(c_tcp, tcp_port, secretB):
+def stage_c(c_tcp, secretB):
     """
     Returns tuple containing (num2, len2, secretC, c) from step c2.
     Args: client tcp socket c_tcp, values provided by server from stage_b
@@ -120,6 +123,7 @@ def stage_c(c_tcp, tcp_port, secretB):
     #print(s_packet)
     #print(len(s_packet))
     s_plen, s_psecret, s_step, s_sid, num2, len2, secretC, character = s_struct.unpack(s_packet)
+    validate_header(s_plen, s_psecret, s_step, s_sid, 13, secretB, 2)
     print(f'Received: {num2} {len2} {secretC} {character}')
     return (num2, len2, secretC, character)
 
@@ -150,9 +154,17 @@ def stage_d(c_tcp, num2, len2, secretC, character):
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = c_tcp.recv(BUF_SIZE)
     s_plen, s_psecret, s_step, s_sid, secretD = s_struct.unpack(s_packet)
+    validate_header(s_plen, s_psecret, s_step, s_sid, 4, secretC, 2)
     print(f'Received: {secretD}')
     return secretD
 
+def validate_header(s_plen, s_psecret, s_step, s_sid, plen, psecret, step):
+    """
+    Prints a message if the server header was incorrect.
+    Technically the client doesn't have to check this.
+    """
+    if (s_plen != plen or s_psecret != psecret or s_step != step or s_sid != SID):
+        print("Whoops the server sent an incorrect header")
 
 def run_client():
     """
@@ -165,15 +177,13 @@ def run_client():
     # Run stages A and B
     num, len, udp_port, secretA = stage_a(c_udp)
     tcp_port, secretB = stage_b(c_udp, num, len, udp_port, secretA)
-    # tcp_port = 1000
-    # secretB = 1000
 
     # Create client TCP connection.
     c_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     c_tcp.connect((SERVER_HOST, tcp_port))
 
     # Run stages C and D
-    num2, len2, secretC, character = stage_c(c_tcp, tcp_port, secretB)
+    num2, len2, secretC, character = stage_c(c_tcp, secretB)
     secretD = stage_d(c_tcp, num2, len2, secretC, character)
 
     # Close shop
