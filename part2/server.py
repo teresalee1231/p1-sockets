@@ -164,6 +164,7 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
         c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
         #print(payload)
         #print('hello')
+        # hi lol
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
             detectedFailure()
