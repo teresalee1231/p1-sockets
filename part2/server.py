@@ -159,7 +159,7 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
         try:
-            c_packet = c_tcp.recv(1024)
+            c_packet = c_tcp.recv(BUF_SIZE)
             c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
         except:
             detectedFailure()
@@ -183,18 +183,15 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     # Header
     payload_len = 4
     psecret = secretC #whatever came in from the client header
-    step = 3
+    step = 2
 
     s_data = [payload_len, psecret, step, SID, secretD]
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = s_struct.pack(*s_data)
     c_tcp.send(s_packet)
 
-
 def detectedFailure():
-    # need to close thread, not just the socket
-    #client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
-    #client_socket.close()
+    # need to close thread
     raise Exception("There was an error in validating one of the packets")
 
 
@@ -211,16 +208,13 @@ def handle_client(c_addr, c_a1_packet):
         # (to avoid concurrent access of s_udp_a)
         s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s_udp_b.settimeout(TIMEOUT)
-        try :
-            udp_port = bind_to_random_port(s_udp_b)
-            print(f'Created server UDP socket for a2/b: {udp_port}')
-            # Run stage A and B
-            num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
-            s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
-        except socket.timeout:
-            detectedFailure()
+        udp_port = bind_to_random_port(s_udp_b)
+        print(f'Created server UDP socket for a2/b: {udp_port}')
+        # Run stage A and B
+        num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
+        s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
     except:
-        raise Exception("There was an error in stage area A/B")
+        raise Exception("There was an error in stage A/B")
     finally:
         s_udp_b.close()
 
@@ -230,15 +224,15 @@ def handle_client(c_addr, c_a1_packet):
         c_tcp, c_tcp_addr = s_tcp.accept()
         print("Established client tcp connection:", c_tcp_addr)
     except:
-        print('There was an error in establishing the tcp connection')
-        raise Exception("There was an error in making tcp port")
+        s_tcp.close()
+        raise Exception("There was an error establishing TCP connection with client")
 
     try:
         # Run stage c and d
         num2, len2, secretC, char_c = s_stage_c(c_tcp, secretB)
         s_stage_d(c_tcp, num2, len2, secretC, char_c)
     except:
-        raise Exception("There was an error in stage area C/D")
+        raise Exception("There was an error in stage C/D")
     finally:
         s_tcp.close()
         c_tcp.close()
@@ -293,7 +287,8 @@ def run_server():
             print(f'Create client thread')
             c_thread = threading.Thread(target = handle_client, args = (c_addr, c_packet))
             c_thread.start()
-    except KeyboardInterrupt:
+    except:
+        print("Closing server")
         s_udp_a.close()
 
 if __name__ == '__main__':
