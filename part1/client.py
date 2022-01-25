@@ -13,7 +13,7 @@ STAGE_A_PORT = 9999
 # STAGE_A_PORT = 12235
 
 # Globals
-BUF_SIZE = 1024      # size of data buffer
+BUF_SIZE = 2048      # size of data buffer
 HEADER = '> L L H H' # packet header struct
 STEP = 1             # client header step number; always 1
 SID = 160            # header student id

@@ -45,7 +45,7 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
         detectedFailure()
 
     # generating random num
-    num = 1
+    num = random.randint(1,20)
     len = random.randint(0,20)
     secretA = random.randint(1,500)
 
