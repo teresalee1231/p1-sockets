@@ -38,15 +38,12 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     print(f'Received a1 packet from client: {c_addr}')
 
     # TODO: validate client header + payload
-    test = "hello world\0".encode('utf-8')
-    print(test)
     if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
         detectedFailure(s_udp)
-    if (c_sid != SID) :
+    if (c_sid != SID or c_step != 0) :
         detectedFailure(s_udp)
-    # for test2 in payload :
-    #     if (test2 != test):
-    #         detectedFailure(s_udp)
+    if (payload.decode() != "hello world\0") :
+        detectedFailure(s_udp)
 
     # generating random num
     num = random.randint(1,20)
