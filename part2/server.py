@@ -38,18 +38,15 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     print(f'Received a1 packet from client: {c_addr}')
 
     # TODO: validate client header + payload
-    if (c_sid != None and c_plen != None and c_step != None and payload != None and c_psecret != None) :
-        if (c_sid != SID) :
-            detectedFailure(s_udp)
-        if (payload != "Hello World") :
-            detectedFailure(s_udp)
-        if (c_plen % 4 != 0) :
-            detectedFailure(s_udp)
-        if (c_plen > 12) :
-            detectedFailure(s_udp)
-    else :
-        # if any part of the payload is null/none - fail
+    test = "hello world\0".encode('utf-8')
+    print(test)
+    if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
         detectedFailure(s_udp)
+    if (c_sid != SID) :
+        detectedFailure(s_udp)
+    # for test2 in payload :
+    #     if (test2 != test):
+    #         detectedFailure(s_udp)
 
     # generating random num
     num = random.randint(1,20)
@@ -97,6 +94,8 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
                 detectedFailure(s_udp)
                 # or is it c_packet_id idk lol
             if (c_packet_id > num - 1) :
+                detectedFailure(s_udp)
+            if (c_psecret != secretA) :
                 detectedFailure(s_udp)
             ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
             ack_packet = ack_struct.pack(*ack_data)
