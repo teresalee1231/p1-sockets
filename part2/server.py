@@ -1,15 +1,9 @@
 # gotta get the socket api
 import socket
-# import utility functions; call with utils.get_packet_header()
-#import sys
-#import os
-#sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-#import utils.helper
 import random
 import struct
 import math
 import threading
-import time
 
 # Set host name and port used by server
 HOST = 'localhost'
@@ -23,10 +17,11 @@ SID = 160
 HEADER = '> L L H H' # packet header struct
 BUF_SIZE = 2048
 
+# Server socket timeout (udp/tcp)
+TIMEOUT = 3
+
 # Set max number of clients that can be served by TCP socket
 MAX_CONNECTIONS = 1
-
-TIMEOUT = 3
 
 # Lock for binding to empty ports
 port_bind_lock = threading.Lock()
