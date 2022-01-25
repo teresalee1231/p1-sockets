@@ -83,7 +83,12 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
 
     packet_id = 0
     while packet_id != (num - 1) :
-        ack = random.randint(0,1)
+        # first packet we just don't acknowledge
+        if packet_id == 0:
+            ack = 0
+        else :
+            ack = random.randint(0,1)
+
         if ack == 1 :
             c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
             # verifying data = len + 4
