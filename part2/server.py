@@ -99,7 +99,7 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
                 c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
                 if (c_payload_len != len + 4) :
                     detectedFailure()
-                if (c_packet_id == packet_id) :
+                if (c_packet_id != packet_id) :
                     detectedFailure()
                 # theres probably a better way to do thisLOL
                 count_length = 0
