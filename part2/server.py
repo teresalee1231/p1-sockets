@@ -50,8 +50,8 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
         detectedFailure()
 
     # generating random num
-    num = random.randint(1,20)
-    len = random.randint(0,20)
+    num = random.randint(5,100)
+    len = random.randint(5,100)
     secretA = random.randint(1,500)
 
     s_payload_len = 16
@@ -138,10 +138,12 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
 def s_stage_c(c_tcp, secretB):
 #     #stage c
     # Payload
-    num2 = random.randint(1,20)
-    len2 = random.randint(0,20)
+    num2 = random.randint(5,100)
+    len2 = random.randint(5,100)
     secretC = random.randint(1,500)
-    char_c = 'a'.encode('utf-8')
+    # ascii for 97 = 'a', 122 = 'z'
+    randomChar = random.randint(97, 122)
+    char_c = chr(randomChar).encode('utf-8')
 
     # Header
     payload_len = 13
