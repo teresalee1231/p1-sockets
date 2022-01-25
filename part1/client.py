@@ -2,12 +2,6 @@
 import socket
 import struct
 import math
-### import datetime
-# import utility functions; call with utils.helper.get_packet_header()
-### import sys
-### import os
-### sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-### import utils.helper
 
 # Set host name and port used by server
 # to test locally
@@ -15,8 +9,8 @@ SERVER_HOST = 'localhost'
 STAGE_A_PORT = 9999
 
 # to test against hw server
-#SERVER_HOST = 'attu2.cs.washington.edu'
-#STAGE_A_PORT = 12235
+# SERVER_HOST = 'attu2.cs.washington.edu'
+# STAGE_A_PORT = 12235
 
 # Globals
 BUF_SIZE = 2048      # size of data buffer
