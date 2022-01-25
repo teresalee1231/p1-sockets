@@ -97,13 +97,16 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
             ack = random.randint(0,1)
             if ack == 1 :
                 c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
+                # verifying data = len + 4
                 if (c_payload_len != len + 4) :
                     detectedFailure()
-                # if (c_packet_id != packet_id) :
-                #     detectedFailure()
+                # verifying that packets arrive in order
+                if (packet_id - 1 > c_packet_id) :
+                    detectedFailure()
                 count_length = 0
                 for zeros in c_payload :
                     count_length += 1
+                    # verifying the zeros in the payload
                     if (zeros != 0) :
                         detectedFailure()
                 # verifying the zeros in the payload
@@ -160,19 +163,24 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
-        c_packet = c_tcp.recv(1024)
-        c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
-        #print(payload)
-        #print('hello')
-        # hi lol
+        try:
+            c_packet = c_tcp.recv(1024)
+            c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
+        except:
+            detectedFailure()
+
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
             detectedFailure()
         #validating the payload
         # TODO: actual lenght of payload
+        payload_count = 0
         for character in payload:
+            payload_count += 1
             if character != char_c:
                 detectedFailure()
+        if (payload_count != c_plen != len2):
+            detectedFailure()
 
     # Payload
     secretD = random.randint(1,500)
