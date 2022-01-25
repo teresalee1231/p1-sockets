@@ -1,9 +1,9 @@
-### Names
+## Names
 Ben Jee (benjee19)\
 Teresa Lee (teresl4)\
 Ashley Luty (aluty02)
 
-### The sequence of server secrets that were received by your client program:
+## The sequence of server secrets that were received by your client program:
 
 Received from provided server:\
 secretA: 47 \
@@ -11,13 +11,15 @@ secretB: 32 \
 secretC: 1  \
 secretD: 1
 
-### Instructions on how to compile and run your code:
+## Instructions on how to compile and run your code:
 Make sure server is running first.
 
-Enter to command line:
+### To connect to attu2/3, edit the global variable SERVER_HOST (at the top of client.py) and re-run the program:
+SERVER_HOST = 'attu2.cs.washington.edu'     # for attu2 \
+SERVER_HOST = 'attu3.cs.washington.edu'     # for attu3
 
+### To run the client, enter in the terminal:
 python3 client.py
 
-To shut down:
-
+### To force shut down client:
 Ctrl-C
