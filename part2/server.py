@@ -39,11 +39,11 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
 
     # TODO: validate client header + payload
     if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
-        detectedFailure(s_udp)
+        detectedFailure()
     if (c_sid != SID or c_step != 1) :
-        detectedFailure(s_udp)
+        detectedFailure()
     if (payload.decode() != "hello world\0") :
-        detectedFailure(s_udp)
+        detectedFailure()
 
     # generating random num
     num = random.randint(1,20)
@@ -88,12 +88,16 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
         if ack == 1 :
             c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
             if (c_payload_len != len + 4) :
-                detectedFailure(s_udp)
+                detectedFailure()
                 # or is it c_packet_id idk lol
+            # TODO: fix this logic
             if (c_packet_id > num - 1) :
-                detectedFailure(s_udp)
+                detectedFailure()
+            # TODO: check if payload is all 0's, AND if the length of the payload
+            # is actually correct, what it should be and if it matches the header
             if (c_psecret != secretA) :
-                detectedFailure(s_udp)
+                detectedFailure()
+            # TODO: check c_step, c_sid
             ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
             ack_packet = ack_struct.pack(*ack_data)
             s_udp.sendto(ack_packet, c_addr)
@@ -138,8 +142,6 @@ def s_stage_c(c_tcp, secretB):
 
 
 def s_stage_d(c_tcp, num2, len2, secretC, char_c):
-#     #stage d
-
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
@@ -148,12 +150,13 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
         #print(payload)
         #print('hello')
         #if the header is wrong
-        if c_plen != len2 + pad_len or c_psecret != secretC or c_step != 1 or c_sid != SID:
-            detectedFailure(c_tcp)
+        if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
+            detectedFailure()
         #validating the payload
+        # TODO: actual lenght of payload
         for character in payload:
             if character != char_c:
-                detectedFailure(c_tcp)
+                detectedFailure()
 
     # Payload
     secretD = random.randint(1,500)
@@ -169,11 +172,11 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     c_tcp.send(s_packet)
 
 
-def detectedFailure(client_socket):
+def detectedFailure():
     # need to close thread, not just the socket
     #client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
     #client_socket.close()
-    print('there was an error')
+    raise Exception("There was an error in validating one of the packets")
 
 
 def handle_client(c_addr, c_a1_packet):
@@ -183,24 +186,41 @@ def handle_client(c_addr, c_a1_packet):
     c_addr: client address
     c_a1_packet: step a1 packet from client
     """
-    # Create dedicated udp port for client to use in stage A2 and B.
-    # (to avoid concurrent access of s_udp_a)
-    s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_port = bind_to_open_port(s_udp_b)
-    print(f'Created server UDP socket for a2/b: {udp_port}')
 
-    # Run stage A and B
-    num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
-    s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
+    try:
+        # Create dedicated udp port for client to use in stage A2 and B.
+        # (to avoid concurrent access of s_udp_a)
+        s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_port = bind_to_open_port(s_udp_b)
+        print(f'Created server UDP socket for a2/b: {udp_port}')
 
-    # Establish TCP connection with client (tcp socket was made/bound at end of stage B)
-    s_tcp.listen(MAX_CONNECTIONS)
-    c_tcp, c_tcp_addr = s_tcp.accept()
-    print("Established client tcp connection:", c_tcp_addr)
+        # Run stage A and B
+        num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
+        s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
+    except:
+        raise Exception("There was an error in stage area A/B")
+    finally:
+        s_udp_b.close()
 
-    # Run stage c and d
-    num2, len2, secretC, char_c = s_stage_c(c_tcp, secretB)
-    s_stage_d(c_tcp, num2, len2, secretC, char_c)
+    try:
+        # Establish TCP connection with client (tcp socket was made/bound at end of stage B)
+        s_tcp.listen(MAX_CONNECTIONS)
+        c_tcp, c_tcp_addr = s_tcp.accept()
+        print("Established client tcp connection:", c_tcp_addr)
+    except:
+        print('There was an error in establishing the tcp connection')
+        raise Exception("There was an error in making tcp port")
+
+    try:
+        # Run stage c and d
+        num2, len2, secretC, char_c = s_stage_c(c_tcp, secretB)
+        s_stage_d(c_tcp, num2, len2, secretC, char_c)
+    except:
+        raise Exception("There was an error in stage area C/D")
+    finally:
+        s_tcp.close()
+        c_tcp.close()
+
 
 def bind_to_open_port(s_socket):
     """
@@ -227,33 +247,22 @@ def run_server():
     # https://docs.python.org/2/howto/sockets.html
     # Might need to keep it as gethostname(), tried doing specific didnt work,
     # In here it explains also why we should use gethostname()
-
     # print(socket.gethostname())
     # s.bind((socket.gethostname(), 12235))
 
-    # doesn't need to specify a number, the argument is "backlog" meaning
-    # the number of unaccepted connections that the system will
-    # allow before refusing new connections, basically how many can be connected?
-
-    # udp, just opens a socket and receives, doesn't need listen, or accept
-    #s.listen(MAX_CONNECTIONS)
-    #print('waiting for connections')
-
-    #c, addr = s.accept()
-    #print("Connected with ", addr)
-    #c.send(bytes("You've connected to the server!", 'utf-8'))
-
-
     # Wait for client udp packets
-    while True:
-        print("Waiting for client connection...")
-        # Recieve A1 packet ---------------------------
-        c_packet, c_addr = s_udp_a.recvfrom(BUF_SIZE)
+    try:
+        while True:
+            print("Waiting for client connection...")
+            # Recieve A1 packet ---------------------------
+            c_packet, c_addr = s_udp_a.recvfrom(BUF_SIZE)
 
-        # handle the rest of client stages via thread
-        print(f'Create client thread')
-        c_thread = threading.Thread(target = handle_client, args = (c_addr, c_packet))
-        c_thread.start()
+            # handle the rest of client stages via thread
+            print(f'Create client thread')
+            c_thread = threading.Thread(target = handle_client, args = (c_addr, c_packet))
+            c_thread.start()
+    except KeyboardInterrupt:
+        s_udp_a.close()
 
 if __name__ == '__main__':
     run_server()
