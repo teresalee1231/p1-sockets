@@ -36,13 +36,10 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     Validates a1 packet and runs stage A2, server sending response packet to client.
     Note that stage A1 is completed in run_server()
     """
-    s_udp.settimeout(TIMEOUT)
     c_struct = struct.Struct(f'{HEADER} 12s')
-    try:
-        c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
-    except socket.timeout:
-        detectedFailure()
-    s_udp.settimeout(None)
+
+    c_plen, c_psecret, c_step, c_sid, payload = c_struct.unpack(c_packet)
+
     print(f'Received a1 packet from client: {c_addr}')
 
     if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
@@ -89,44 +86,44 @@ def s_stage_b(s_udp, c_addr, num, len, secretA):
 
     s_data, addr = s_udp.recvfrom(BUF_SIZE)
 
-    s_udp.settimeout(TIMEOUT)
-
     packet_id = 0
     while packet_id != (num - 1) :
-        try :
-            ack = random.randint(0,1)
-            if ack == 1 :
-                c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
-                # verifying data = len + 4
-                if (c_payload_len != len + 4) :
-                    detectedFailure()
-                # verifying that packets arrive in order
-                if (packet_id - 1 > c_packet_id) :
-                    detectedFailure()
-                count_length = 0
-                for zeros in c_payload :
-                    count_length += 1
-                    # verifying the zeros in the payload
-                    if (zeros != 0) :
-                        detectedFailure()
+        ack = random.randint(0,1)
+        if ack == 1 :
+            c_payload_len, c_psecret, c_step, c_sid, c_packet_id, *c_payload = client_struct.unpack(s_data)
+            # verifying data = len + 4
+            if (c_payload_len != len + 4) :
+                detectedFailure()
+            # verifying that packets arrive in order
+            if (packet_id - 1 > c_packet_id) :
+                detectedFailure()
+            count_length = 0
+            for zeros in c_payload :
+                count_length += 1
                 # verifying the zeros in the payload
-                if (c_payload_len - 4 != (count_length - (aligned_len - len))) :
+                if (zeros != 0) :
                     detectedFailure()
-                if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
-                    detectedFailure()
-                ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
-                ack_packet = ack_struct.pack(*ack_data)
-                s_udp.sendto(ack_packet, c_addr)
-                packet_id = c_packet_id
-                if (packet_id != (num - 1)):
-                    s_data, c_addr = s_udp.recvfrom(BUF_SIZE)
-        except socket.timeout:
-            detectedFailure()
-    s_udp.settimeout(None)
+            # verifying the zeros in the payload
+            if (c_payload_len - 4 != (count_length - (aligned_len - len))) :
+                detectedFailure()
+            if (c_psecret != secretA or c_step != 1 or c_sid != SID) :
+                detectedFailure()
+            ack_data = [ack_payload_len, secretA, ack_step, SID, c_packet_id]
+            ack_packet = ack_struct.pack(*ack_data)
+            s_udp.sendto(ack_packet, c_addr)
+            packet_id = c_packet_id
+            if (packet_id != (num - 1)):
+                s_data, c_addr = s_udp.recvfrom(BUF_SIZE)
+
     # Create tcp socket for stage C and D. Has to be created here since we
     # gotta return the tcp port but don't know which ones are open.
+
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_port = bind_to_open_port(s_tcp)
+    s_tcp.settimeout(TIMEOUT)
+    try:
+        tcp_port = bind_to_open_port(s_tcp)
+    except socket.timeout:
+        detectedFailure()
 
     # Create packet for stage b2
     secretB = random.randint(1, 500)
@@ -215,12 +212,15 @@ def handle_client(c_addr, c_a1_packet):
         # Create dedicated udp port for client to use in stage A2 and B.
         # (to avoid concurrent access of s_udp_a)
         s_udp_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        udp_port = bind_to_open_port(s_udp_b)
-        print(f'Created server UDP socket for a2/b: {udp_port}')
-
-        # Run stage A and B
-        num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
-        s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
+        s_udp_b.settimeout(TIMEOUT)
+        try :
+            udp_port = bind_to_open_port(s_udp_b)
+            print(f'Created server UDP socket for a2/b: {udp_port}')
+            # Run stage A and B
+            num, len, secretA = s_stage_a(s_udp_b, udp_port, c_addr, c_a1_packet)
+            s_tcp, secretB = s_stage_b(s_udp_b, c_addr, num, len, secretA)
+        except socket.timeout:
+            detectedFailure()
     except:
         raise Exception("There was an error in stage area A/B")
     finally:
