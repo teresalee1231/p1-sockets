@@ -40,7 +40,7 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
     # TODO: validate client header + payload
     if (c_sid == None and c_plen == None and c_step == None and payload == None and c_psecret == None) :
         detectedFailure(s_udp)
-    if (c_sid != SID or c_step != 0) :
+    if (c_sid != SID or c_step != 1) :
         detectedFailure(s_udp)
     if (payload.decode() != "hello world\0") :
         detectedFailure(s_udp)
@@ -147,10 +147,10 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
         c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
         #print(payload)
         #print('hello')
-        # if the header is wrong
-        if c_plen != len2 + pad_len or c_psecret != secretC or c_step != 0 or c_sid != SID:
+        #if the header is wrong
+        if c_plen != len2 + pad_len or c_psecret != secretC or c_step != 1 or c_sid != SID:
             detectedFailure(c_tcp)
-        # validating the payload
+        #validating the payload
         for character in payload:
             if character != char_c:
                 detectedFailure(c_tcp)
@@ -171,8 +171,9 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
 
 def detectedFailure(client_socket):
     # need to close thread, not just the socket
-    client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
-    client_socket.close()
+    #client_socket.send(bytes("We've detected that something you sent didn't follow the protocol, closing connection.", 'utf-8'))
+    #client_socket.close()
+    print('there was an error')
 
 
 def handle_client(c_addr, c_a1_packet):
