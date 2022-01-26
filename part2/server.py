@@ -164,23 +164,37 @@ def s_stage_c(c_tcp, secretB):
 def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
-    for i in range(num2):
-        try:
-            c_packet = c_tcp.recv(BUF_SIZE)
-            c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
-        except:
-            raise Exception("(d1) socket timeout or client packet format error")
-        #if the header is wrong
-        if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
-            detectedFailure()
-        #validating the payload
-        payload_count = 0
-        for character in payload:
-            payload_count += 1
-            if character != char_c:
+
+    # recreate client packet to check its bytes against tcp stream
+    chars = [char_c] * len2  # payload character array
+    c_data = [len2, secretC, 1, SID] + chars
+    c_sample_packet = c_struct.pack(*c_data)
+
+    # packet validation loop variables
+    c_packet_len = len(c_sample_packet)
+    curr_packet = 0     # iterate up to num2 -1
+    curr_byte = 0       # current byte in c_sample_packet
+    validated_all_packets = False
+
+    # iterate each tcp packet
+    while not validated_all_packets:
+        c_packet_stream = c_tcp.recv(BUF_SIZE)
+        print(f'Received {c_packet_stream}')
+
+        # iterate bytes in the tcp stream
+        for b in c_packet_stream:
+            if (b != c_sample_packet[curr_byte]):
                 detectedFailure()
-        if (payload_count != c_plen != len2):
-            detectedFailure()
+            # continue looping through sample packet
+            curr_byte += 1
+            if (curr_byte == c_packet_len):
+                print(f'Finished validating packet {curr_packet}')
+                curr_byte = 0
+                curr_packet += 1
+            # check if validated all packets
+            if (curr_packet == num2):
+                validated_all_packets = True
+                break
 
     # Payload
     secretD = random.randint(1,500)
@@ -256,8 +270,8 @@ def bind_to_random_port(s_socket):
         # try 100 times to find an open port
         for i in range(0, 100):
             try:
-                s_socket.bind((socket.gethostname(), random.randint(1024, 65535)))
-                # s_socket.bind((HOST, random.randint(1024, 65535)))
+                # s_socket.bind((socket.gethostname(), random.randint(1024, 65535)))
+                s_socket.bind((HOST, random.randint(1024, 65535)))
                 bound = True
                 break
             except:
@@ -275,8 +289,8 @@ def run_server():
     print('Created Server UDP socket a')
     s_udp_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    #s_udp_a.bind(('localhost', 9999))
-    s_udp_a.bind((socket.gethostname(), PORT))
+    s_udp_a.bind((HOST, PORT))
+    # s_udp_a.bind((socket.gethostname(), PORT))
 
     # Wait for client udp packets
     try:

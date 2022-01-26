@@ -138,8 +138,6 @@ def stage_d(c_tcp, num2, len2, secretC, character):
     for i in range(num2):
         print(f'Sending tcp packet {i}.')
         c_tcp.sendall(c_packet)     # sendall ensures all bytes are sent
-        # weaving time between sending packets ;)
-        time.sleep(2) 
 
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L')
