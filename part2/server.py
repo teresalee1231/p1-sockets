@@ -120,7 +120,7 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
     # gotta return the tcp port but don't know which ones are open.
 
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s_tcp.settimeout(TIMEOUT)
+    #s_tcp.settimeout(TIMEOUT)
     tcp_port = bind_to_random_port(s_tcp)
 
     # Create packet for stage b2
@@ -154,27 +154,33 @@ def s_stage_c(c_tcp, secretB):
     return (num2, len2, secretC, char_c)
 
 def s_stage_d(c_tcp, num2, len2, secretC, char_c):
+    print("got into d")
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
         try:
+            print(i)
             c_packet = c_tcp.recv(BUF_SIZE)
             c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
+            #print(i)
         except:
             raise Exception("(d1) socket timeout or client packet format error")
-
+        print(i)
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
+            #print("wrong header")
             detectedFailure()
         #validating the payload
         payload_count = 0
         for character in payload:
             payload_count += 1
             if character != char_c:
+               #print("wrong char")
                 detectedFailure()
         if (payload_count != c_plen != len2):
+            #print("wrong count")
             detectedFailure()
-
+    print("finished for loop in d")
     # Payload
     secretD = random.randint(1,500)
 
@@ -186,6 +192,7 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     s_data = [payload_len, psecret, step, SID, secretD]
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = s_struct.pack(*s_data)
+    print("we got to right before sending")
     c_tcp.send(s_packet)
 
 def detectedFailure():
@@ -221,6 +228,7 @@ def handle_client(c_addr, c_a1_packet):
         # Establish TCP connection with client (tcp socket was made/bound at end of stage B)
         s_tcp.listen(MAX_CONNECTIONS)
         c_tcp, c_tcp_addr = s_tcp.accept()
+        c_tcp.settimeout(TIMEOUT)
         print("Established client tcp connection:", c_tcp_addr)
     except:
         print("There was an error establishing TCP connection with client")
@@ -276,6 +284,7 @@ def run_server():
     # Might need to keep it as gethostname(), tried doing specific didnt work,
     # In here it explains also why we should use gethostname()
     print(socket.gethostname())
+    print(HOST)
     s_udp_a.bind((socket.gethostname(), PORT))
 
     # Wait for client udp packets

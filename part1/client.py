@@ -2,6 +2,7 @@
 import socket
 import struct
 import math
+import time
 
 # Set host name and port used by server
 # to test locally
@@ -152,10 +153,12 @@ def stage_d(c_tcp, num2, len2, secretC, character):
     for i in range(num2):
         print(f'Sending tcp packet {i}.')
         c_tcp.sendall(c_packet)     # sendall ensures all bytes are sent
+        time.sleep(2) 
 
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = c_tcp.recv(BUF_SIZE)
+    print("finished sending all packets, wants to receive now")
     s_plen, s_psecret, s_step, s_sid, secretD = s_struct.unpack(s_packet)
     validate_header(s_plen, s_psecret, s_step, s_sid, 4, secretC, 2)
     print(f'Received: {secretD}')
