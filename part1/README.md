@@ -13,10 +13,11 @@ secretD: 1
 
 ## Instructions on how to compile and run your code:
 Make sure server is running first.
+Run the client.py on another attu server (not attu3 or 2)
 
 ### To connect to attu2/3, edit the global variable SERVER_HOST (at the top of client.py) and re-run the program:
-SERVER_HOST = 'attu2.cs.washington.edu'     # for attu2 \
-SERVER_HOST = 'attu3.cs.washington.edu'     # for attu3
+SERVER_HOST = 'attu2.cs.washington.edu'     # for attu2 (aka YOUR server) \
+SERVER_HOST = 'attu3.cs.washington.edu'     # for attu3 (aka OUR server)
 
 ### To run the client, enter in the terminal:
 python3 client.py
