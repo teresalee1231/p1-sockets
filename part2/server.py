@@ -179,7 +179,6 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     # iterate each tcp packet
     while not validated_all_packets:
         c_packet_stream = c_tcp.recv(BUF_SIZE)
-        print(f'Received {c_packet_stream}')
 
         # iterate bytes in the tcp stream
         for b in c_packet_stream:
