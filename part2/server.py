@@ -5,11 +5,11 @@ import struct
 import threading
 
 # Set host name and port used by server
-HOST = 'localhost'
-PORT = 9999
+#HOST = 'localhost'
+#PORT = 9999
 # (?) for attu
-# HOST = 'attu2.cs.washington.edu'
-# PORT = 12235
+HOST = 'attu3.cs.washington.edu'
+PORT = 12237
 
 # Student ID
 SID = 160
@@ -248,7 +248,8 @@ def bind_to_random_port(s_socket):
         # try 100 times to find an open port
         for i in range(0, 100):
             try:
-                s_socket.bind((HOST, random.randint(1024, 65535)))
+                s_socket.bind((socket.gethostname(), random.randint(1024, 65535)))
+                # s_socket.bind((HOST, random.randint(1024, 65535)))
                 bound = True
                 break
             except:
@@ -268,14 +269,14 @@ def run_server():
 
     # binds the socket to the address (ip address, port)? still not sure
     # for localhost
-    s_udp_a.bind(('localhost', 9999))
+   # s_udp_a.bind(('localhost', 9999))
 
     # for attu. is gethostname necessary?
     # https://docs.python.org/2/howto/sockets.html
     # Might need to keep it as gethostname(), tried doing specific didnt work,
     # In here it explains also why we should use gethostname()
-    # print(socket.gethostname())
-    # s.bind((socket.gethostname(), 12235))
+    print(socket.gethostname())
+    s_udp_a.bind((socket.gethostname(), PORT))
 
     # Wait for client udp packets
     try:

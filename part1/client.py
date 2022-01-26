@@ -5,12 +5,15 @@ import math
 
 # Set host name and port used by server
 # to test locally
-SERVER_HOST = 'localhost'
-STAGE_A_PORT = 9999
+# SERVER_HOST = 'localhost'
+# STAGE_A_PORT = 9999
 
 # to test against hw server
 # SERVER_HOST = 'attu2.cs.washington.edu'
 # STAGE_A_PORT = 12235
+
+SERVER_HOST = 'attu3.cs.washington.edu'
+STAGE_A_PORT = 12237
 
 # Globals
 BUF_SIZE = 2048      # size of data buffer
