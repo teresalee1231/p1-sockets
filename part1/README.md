@@ -19,6 +19,8 @@ Run the client.py on another attu server (not attu3 or 2)
 SERVER_HOST = 'attu2.cs.washington.edu'     # for attu2 (aka YOUR server) \
 SERVER_HOST = 'attu3.cs.washington.edu'     # for attu3 (aka OUR server)
 
+If you decided to change the server port, will need to change STAGE_A_PORT (global variable) to equal whatever PORT you set in server.py.
+
 ### To run the client, enter in the terminal:
 python3 client.py
 

@@ -4,17 +4,13 @@ import struct
 import math
 import time
 
-# Set host name and port used by server
-# to test locally
-# SERVER_HOST = 'localhost'
-# STAGE_A_PORT = 9999
-
 # to test against hw server
 # SERVER_HOST = 'attu2.cs.washington.edu'
 # STAGE_A_PORT = 12235
 
+# to test against our server
 SERVER_HOST = 'attu3.cs.washington.edu'
-STAGE_A_PORT = 12237
+STAGE_A_PORT = 12235
 
 # Globals
 BUF_SIZE = 2048      # size of data buffer
@@ -73,7 +69,6 @@ def stage_b(c_udp, num, len, udp_port, secretA):
     # for each packet
     for i in range(num):
         print(f'Transmit udp packet {i}.')
-        #print(udp_port)
         # create packet to send
         c_data = [c_payload_len, secretA, STEP, SID, i] + zeros
         c_packet = c_struct.pack(*c_data)
@@ -83,22 +78,15 @@ def stage_b(c_udp, num, len, udp_port, secretA):
         acked = False
         while not acked:
             # send packet
-            #print(f'\tSending: {c_packet.hex()}')
-            #print(f'\tTime: {datetime.datetime.now().time()}')
             c_udp.sendto(c_packet, (SERVER_HOST, udp_port))
-
             # check for ack
             try:
                 # receive server ack packet
                 s_packet, s_addr = c_udp.recvfrom(BUF_SIZE)
                 s_plen, s_psecret, s_step, s_sid, acked_packet_id = s_ack_struct.unpack(s_packet)
                 validate_header(s_plen, s_psecret, s_step, s_sid, 4, secretA, 1)
-                # print(f'\tReceived ack for packet {acked_packet_id}: {s_packet}')
-                # print(f'\tTime: {datetime.datetime.now().time()}')
                 acked = (i == acked_packet_id)
             except socket.timeout:
-                # print(f'Timeout for packet {i}, retransmit.')
-                # print(f'\tTime: {datetime.datetime.now().time()}')
                 acked = False
         # move on to next packet (next loop)
 
@@ -124,8 +112,6 @@ def stage_c(c_tcp, secretB):
     # receive server packet
     s_struct = struct.Struct(f'{HEADER} L L L c 3x') # 3x for 3 pad bytes
     s_packet = c_tcp.recv(BUF_SIZE)
-    #print(s_packet)
-    #print(len(s_packet))
     s_plen, s_psecret, s_step, s_sid, num2, len2, secretC, character = s_struct.unpack(s_packet)
     validate_header(s_plen, s_psecret, s_step, s_sid, 13, secretB, 2)
     print(f'Received: {num2} {len2} {secretC} {character}')
@@ -147,7 +133,6 @@ def stage_d(c_tcp, num2, len2, secretC, character):
     chars = [character] * len2  # payload character array
     c_data = [len2, secretC, STEP, SID] + chars
     c_packet = c_struct.pack(*c_data)
-    # print(f'Packet to send: {c_packet.hex()}')
 
     # send num2 packets to server
     for i in range(num2):

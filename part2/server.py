@@ -5,14 +5,13 @@ import struct
 import threading
 
 # Set host name and port used by server
-#HOST = 'localhost'
-#PORT = 9999
-# (?) for attu
 HOST = 'attu3.cs.washington.edu'
-PORT = 12237
+PORT = 12235
 
 # Student ID
 SID = 160
+
+# the > makes every packet we send big-endian
 HEADER = '> L L H H' # packet header struct
 BUF_SIZE = 2048
 
@@ -41,8 +40,8 @@ def s_stage_a(s_udp, udp_port, c_addr, c_packet):
         detectedFailure()
 
     # generating random num
-    num = random.randint(1,20)
-    len = random.randint(0,20)
+    num = random.randint(5,50)
+    len = random.randint(5,50)
     secretA = random.randint(1,500)
 
     s_payload_len = 16
@@ -77,6 +76,7 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
 
     # For each packet we need to receive, in order
     curr_packet_id = 0
+    has_not_ackd = False
     while curr_packet_id != num :
         print(f'Checking for packet {curr_packet_id}')
         # Must receive client packet
@@ -106,6 +106,12 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
 
         # Decide to ack or not
         ack = random.randint(0,1)
+
+        # ensures that the first packet we don't acknowledge
+        if not has_not_ackd:
+            ack = 0
+            has_not_ackd = True
+
         if ack == 1 :
             print(f'Ack packet {curr_packet_id}')
             # Send ack
@@ -120,13 +126,14 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
     # gotta return the tcp port but don't know which ones are open.
 
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #s_tcp.settimeout(TIMEOUT)
     tcp_port = bind_to_random_port(s_tcp)
 
     # Create packet for stage b2
     secretB = random.randint(1, 500)
+
     s_payload_len = 8
     s_step = 2
+
     s_data = [s_payload_len, secretA, s_step, SID, tcp_port, secretB]
     s_send_struct = struct.Struct(f'{HEADER} L L')
     s_packet = s_send_struct.pack(*s_data)
@@ -136,10 +143,11 @@ def s_stage_b(s_udp, c_addr, num, length, secretA):
 def s_stage_c(c_tcp, secretB):
     # stage c2
     # Payload
-    num2 = random.randint(1,20)
-    len2 = random.randint(0,20)
+    num2 = random.randint(5,20)
+    len2 = random.randint(5,50)
     secretC = random.randint(1,500)
-    char_c = 'a'.encode('utf-8')
+    randomChar = random.randint(97, 122)
+    char_c = chr(randomChar).encode('utf-8')
 
     # Header
     payload_len = 13
@@ -154,33 +162,26 @@ def s_stage_c(c_tcp, secretB):
     return (num2, len2, secretC, char_c)
 
 def s_stage_d(c_tcp, num2, len2, secretC, char_c):
-    print("got into d")
     pad_len = (4 - (len2 % 4)) % 4
     c_struct = struct.Struct(f'{HEADER} {len2}c {pad_len}x')
     for i in range(num2):
         try:
-            print(i)
             c_packet = c_tcp.recv(BUF_SIZE)
             c_plen, c_psecret, c_step, c_sid, *payload = c_struct.unpack(c_packet)
-            #print(i)
         except:
             raise Exception("(d1) socket timeout or client packet format error")
-        print(i)
         #if the header is wrong
         if c_plen != len2 or c_psecret != secretC or c_step != 1 or c_sid != SID:
-            #print("wrong header")
             detectedFailure()
         #validating the payload
         payload_count = 0
         for character in payload:
             payload_count += 1
             if character != char_c:
-               #print("wrong char")
                 detectedFailure()
         if (payload_count != c_plen != len2):
-            #print("wrong count")
             detectedFailure()
-    print("finished for loop in d")
+
     # Payload
     secretD = random.randint(1,500)
 
@@ -192,7 +193,6 @@ def s_stage_d(c_tcp, num2, len2, secretC, char_c):
     s_data = [payload_len, psecret, step, SID, secretD]
     s_struct = struct.Struct(f'{HEADER} L')
     s_packet = s_struct.pack(*s_data)
-    print("we got to right before sending")
     c_tcp.send(s_packet)
 
 def detectedFailure():
@@ -275,16 +275,7 @@ def run_server():
     print('Created Server UDP socket a')
     s_udp_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # binds the socket to the address (ip address, port)? still not sure
-    # for localhost
-   # s_udp_a.bind(('localhost', 9999))
-
-    # for attu. is gethostname necessary?
-    # https://docs.python.org/2/howto/sockets.html
-    # Might need to keep it as gethostname(), tried doing specific didnt work,
-    # In here it explains also why we should use gethostname()
-    print(socket.gethostname())
-    print(HOST)
+    #s_udp_a.bind(('localhost', 9999))
     s_udp_a.bind((socket.gethostname(), PORT))
 
     # Wait for client udp packets
